@@ -6,7 +6,7 @@ import * as THREE from "three";
 
 export default function Cave() {
   const gltf = useGLTF(
-    "/models/portfolio_room_export_FINAL_REVISED_WITH_CLICKABLES_v2_MASKED_020_AURA_BLEND.glb",
+    "/models/portfolio_room_export_FINAL_REVISED_WITH_CLICKABLES_MASKED.glb",
   );
 
   useEffect(() => {

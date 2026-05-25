@@ -2,9 +2,10 @@
 
 import { Canvas } from "@react-three/fiber";
 import { OrbitControls } from "@react-three/drei";
-import Cave from "@/components/canvas/Cave";
 import * as THREE from "three";
 import CameraDebug from "@/components/CameraDebug";
+import Cave from "@/components/Cave";
+import CameraRig from "@/components/CameraRig";
 
 export default function HomePage() {
   return (
@@ -19,7 +20,8 @@ export default function HomePage() {
         }}
       >
         <Cave />
-        <OrbitControls target={[0, 0.1, 0]} />
+        {/* <OrbitControls target={[0, 0.1, 0]} /> */}
+        <CameraRig />
         <CameraDebug />
       </Canvas>
     </div>
