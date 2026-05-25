@@ -5,71 +5,83 @@ import { useFrame, useThree } from "@react-three/fiber";
 import * as THREE from "three";
 
 // ─────────────────────────────────────────────────────────────────────────────
-// CONSTANTS
+// CAMERA / SCENE CONSTANTS
 // ─────────────────────────────────────────────────────────────────────────────
 
-const RADIUS           = 6.42;
-const HEIGHT           = 2.61;
-const INITIAL_ANGLE    = Math.atan2(-5.005, 4.025);
-const SCROLL_SPEED     = 0.0008;
+const RADIUS = 6.42;
+const HEIGHT = 2.61;
+
+const INITIAL_ANGLE = Math.atan2(-5.005, 4.025);
+
+const SCROLL_SPEED = 0.0008;
 const CAMERA_SMOOTHING = 0.06;
-const START_X          = 6.5;
-const START_Z          = -7.5;
-const CHAR_RADIUS      = Math.sqrt(START_X ** 2 + START_Z ** 2);
-const CHARACTER_START_ANGLE = Math.atan2(START_Z, START_X);
-const CHAR_Y           = 3.5;
+
+const START_X = 6.5;
+const START_Z = -7.5;
+
+const CHAR_RADIUS = Math.sqrt(
+  START_X ** 2 + START_Z ** 2
+);
+
+const CHARACTER_START_ANGLE = Math.atan2(
+  START_Z,
+  START_X
+);
+
+const CHAR_Y = 3.5;
+
+// ─────────────────────────────────────────────────────────────────────────────
+// WALK ANIMATION CONSTANTS
+// ─────────────────────────────────────────────────────────────────────────────
+
+// Swing range (max angle in radians)
+
+const LEFT_HAND_SWING_RANGE  = 1.1;
+const RIGHT_HAND_SWING_RANGE = 1.1;
+
+const LEFT_LEG_SWING_RANGE   = 1.1;
+const RIGHT_LEG_SWING_RANGE  = 1.1;
+
+// -----------------------------------------------------------------------------
+// SWING OFFSETS
+//
+// Positive  -> shifts whole motion forward
+// Negative  -> shifts whole motion backward
+//
+// Useful when:
+//
+//   a limb goes too far backward
+//   OR
+//   doesn't come enough forward
+// -----------------------------------------------------------------------------
+
+const LEFT_HAND_OFFSET  = 0.0;
+const RIGHT_HAND_OFFSET = -1;
+
+const LEFT_LEG_OFFSET   = 0.0;
+const RIGHT_LEG_OFFSET  = 0.0;
+
+// How quickly swing reaches max
+const SWING_BUILDUP = 8;
+
+// Walk cycle speed
+const WALK_CYCLE_SPEED = 18;
+
+// ─────────────────────────────────────────────────────────────────────────────
+// LOCAL OBJECT AXIS
+// ─────────────────────────────────────────────────────────────────────────────
+
+const LOCAL_Y = new THREE.Vector3(0, 1, 0);
 
 const BONE_NAMES = [
   "frodo_left_hand",
   "frodo_right_hand",
   "frodo_leg",
-  "frodo_leg001",
-] as const;
-type BoneName = (typeof BONE_NAMES)[number];
-
-// ─────────────────────────────────────────────────────────────────────────────
-// DEBUG MODE
-//
-// Set DEBUG = true to:
-//   1. Attach AxesHelper to each bone so you can SEE the local X/Y/Z axes.
-//      Red = local X, Green = local Y, Blue = local Z.
-//
-//   2. Use keyboard keys 1–6 to test each axis live while scrolling:
-//        1 = local  X  (1, 0, 0)
-//        2 = local -X  (-1, 0, 0)
-//        3 = local  Y  (0, 1, 0)   ← Three.js Y
-//        4 = local -Y  (0,-1, 0)
-//        5 = local  Z  (0, 0, 1)
-//        6 = local -Z  (0, 0,-1)
-//
-//   3. The chosen axis is printed to console so you can copy it into
-//      SWING_AXIS below once you find the right one.
-//
-// Once you've found the right axis, set DEBUG = false and fill in SWING_AXIS.
-// ─────────────────────────────────────────────────────────────────────────────
-
-const DEBUG = true; // ← flip to false for production
-
-// Fill this in once you've confirmed the right axis from debug mode.
-// Example: new THREE.Vector3(0, 0, -1)
-const SWING_AXIS = new THREE.Vector3(0, 0, -1);
-
-// ─────────────────────────────────────────────────────────────────────────────
-// ALL 6 CANDIDATE AXES
-// ─────────────────────────────────────────────────────────────────────────────
-
-const CANDIDATE_AXES: THREE.Vector3[] = [
-  new THREE.Vector3( 1,  0,  0), // key 1
-  new THREE.Vector3(-1,  0,  0), // key 2
-  new THREE.Vector3( 0,  1,  0), // key 3
-  new THREE.Vector3( 0, -1,  0), // key 4
-  new THREE.Vector3( 0,  0,  1), // key 5
-  new THREE.Vector3( 0,  0, -1), // key 6
+  "frodo_leg001", // GLTFLoader strips dots
 ];
-const AXIS_LABELS = [" X", "-X", " Y", "-Y", " Z", "-Z"];
 
 // ─────────────────────────────────────────────────────────────────────────────
-// REUSABLE OBJECTS (never allocate inside useFrame)
+// REUSABLE OBJECTS
 // ─────────────────────────────────────────────────────────────────────────────
 
 const _swingQuat = new THREE.Quaternion();
@@ -79,172 +91,292 @@ const _swingQuat = new THREE.Quaternion();
 // ─────────────────────────────────────────────────────────────────────────────
 
 export default function CameraRig() {
+
   const get = useThree((state) => state.get);
 
-  const currentAngle  = useRef(INITIAL_ANGLE);
-  const targetAngle   = useRef(INITIAL_ANGLE);
-  const walkTime      = useRef(0);
-  const restPose      = useRef<Partial<Record<BoneName, THREE.Quaternion>>>({});
+  const currentAngle = useRef(INITIAL_ANGLE);
+  const targetAngle  = useRef(INITIAL_ANGLE);
 
-  // Which candidate axis is currently active in debug mode (default: axis 5 = local -Z)
-  const debugAxisIndex = useRef(5);
+  const walkTime = useRef(0);
 
-  // ── Capture rest-pose quaternions ─────────────────────────────────────────
+  // Rest-pose local quaternions
+  const restPose = useRef<
+    Partial<Record<string, THREE.Quaternion>>
+  >({});
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // Capture rest pose
+  // ───────────────────────────────────────────────────────────────────────────
 
   useEffect(() => {
+
     const tryCapture = () => {
+
       const { scene } = get();
+
       let allFound = true;
 
       for (const name of BONE_NAMES) {
+
         if (restPose.current[name]) continue;
-        const obj = scene.getObjectByName(name);
-        if (!obj) { allFound = false; continue; }
-        restPose.current[name] = obj.quaternion.clone();
+
+        const obj =
+          scene.getObjectByName(name);
+
+        if (!obj) {
+
+          allFound = false;
+          continue;
+        }
+
+        restPose.current[name] =
+          obj.quaternion.clone();
       }
+
       return allFound;
     };
 
     if (!tryCapture()) {
-      const id = setInterval(() => { if (tryCapture()) clearInterval(id); }, 100);
+
+      const id = setInterval(() => {
+
+        if (tryCapture()) {
+          clearInterval(id);
+        }
+
+      }, 100);
+
       return () => clearInterval(id);
     }
+
   }, [get]);
 
-  // ── Attach AxesHelper to bones (debug only) ────────────────────────────────
+  // ───────────────────────────────────────────────────────────────────────────
+  // Scroll
+  // ───────────────────────────────────────────────────────────────────────────
 
   useEffect(() => {
-    if (!DEBUG) return;
 
-    const { scene } = get();
-    const helpers: THREE.AxesHelper[] = [];
-
-    const attach = () => {
-      for (const name of BONE_NAMES) {
-        const obj = scene.getObjectByName(name);
-        if (!obj) continue;
-        // Only add if not already attached
-        if (obj.getObjectByName(`__axesHelper_${name}`)) continue;
-
-        // Size 1 unit — you'll see three coloured arrows:
-        //   Red   = local X
-        //   Green = local Y  (this is what we're looking for matching Blender's Y)
-        //   Blue  = local Z
-        const helper = new THREE.AxesHelper(1);
-        helper.name = `__axesHelper_${name}`;
-        obj.add(helper);
-        helpers.push(helper);
-        console.log(`[DEBUG] AxesHelper attached to "${name}"`);
-      }
-      return helpers.length === BONE_NAMES.length;
-    };
-
-    if (!attach()) {
-      const id = setInterval(() => { if (attach()) clearInterval(id); }, 100);
-      return () => {
-        clearInterval(id);
-        helpers.forEach((h) => h.parent?.remove(h));
-      };
-    }
-
-    return () => helpers.forEach((h) => h.parent?.remove(h));
-  }, [get]);
-
-  // ── Keyboard axis switcher (debug only) ───────────────────────────────────
-
-  useEffect(() => {
-    if (!DEBUG) return;
-
-    const onKey = (e: KeyboardEvent) => {
-      const idx = parseInt(e.key) - 1; // keys 1–6 → index 0–5
-      if (idx >= 0 && idx < CANDIDATE_AXES.length) {
-        debugAxisIndex.current = idx;
-        console.log(
-          `[DEBUG] Swing axis → key ${e.key} = local ${AXIS_LABELS[idx]}`,
-          `(${CANDIDATE_AXES[idx].x}, ${CANDIDATE_AXES[idx].y}, ${CANDIDATE_AXES[idx].z})`,
-          "\nCopy this into SWING_AXIS once it looks right:",
-          `new THREE.Vector3(${CANDIDATE_AXES[idx].x}, ${CANDIDATE_AXES[idx].y}, ${CANDIDATE_AXES[idx].z})`
-        );
-      }
-    };
-
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, []);
-
-  // ── Scroll ─────────────────────────────────────────────────────────────────
-
-  useEffect(() => {
     const onWheel = (e: WheelEvent) => {
+
       e.preventDefault();
-      targetAngle.current -= e.deltaY * SCROLL_SPEED;
+
+      targetAngle.current -=
+        e.deltaY * SCROLL_SPEED;
     };
-    window.addEventListener("wheel", onWheel, { passive: false });
-    return () => window.removeEventListener("wheel", onWheel);
+
+    window.addEventListener("wheel", onWheel, {
+      passive: false,
+    });
+
+    return () => {
+
+      window.removeEventListener(
+        "wheel",
+        onWheel
+      );
+    };
+
   }, []);
 
-  // ── Frame loop ─────────────────────────────────────────────────────────────
+  // ───────────────────────────────────────────────────────────────────────────
+  // Frame loop
+  // ───────────────────────────────────────────────────────────────────────────
 
   useFrame((_state, delta) => {
+
     const { camera, scene } = get();
 
-    // Camera
+    // ─────────────────────────────────────────────────────────────────────────
+    // CAMERA
+    // ─────────────────────────────────────────────────────────────────────────
+
     currentAngle.current +=
-      (targetAngle.current - currentAngle.current) * CAMERA_SMOOTHING;
+      (targetAngle.current -
+        currentAngle.current) *
+      CAMERA_SMOOTHING;
 
     camera.position.set(
       Math.sin(currentAngle.current) * RADIUS,
       HEIGHT,
-      Math.cos(currentAngle.current) * RADIUS,
+      Math.cos(currentAngle.current) * RADIUS
     );
+
     camera.lookAt(0, 2, 0);
 
-    // Character
-    const character = scene.getObjectByName("character_walk_root");
+    // ─────────────────────────────────────────────────────────────────────────
+    // CHARACTER ROOT
+    // ─────────────────────────────────────────────────────────────────────────
+
+    const character =
+      scene.getObjectByName(
+        "character_walk_root"
+      );
+
     if (!character) return;
 
     const charAngle =
-      CHARACTER_START_ANGLE - (currentAngle.current - INITIAL_ANGLE);
+      CHARACTER_START_ANGLE -
+      (currentAngle.current -
+        INITIAL_ANGLE);
 
     character.position.set(
       Math.cos(charAngle) * CHAR_RADIUS,
       CHAR_Y,
-      Math.sin(charAngle) * CHAR_RADIUS,
+      Math.sin(charAngle) * CHAR_RADIUS
     );
-    character.rotation.y = -charAngle + Math.PI * 0.5;
 
-    // Movement speed
-    const movementSpeed = Math.abs(targetAngle.current - currentAngle.current);
+    character.rotation.y =
+      -charAngle + Math.PI * 0.5;
 
-    // Pick axis: live key-switch in debug, hardcoded in production
-    const axis = DEBUG ? CANDIDATE_AXES[debugAxisIndex.current] : SWING_AXIS;
+    // ─────────────────────────────────────────────────────────────────────────
+    // MOVEMENT SPEED
+    // ─────────────────────────────────────────────────────────────────────────
 
-    // Apply swing
-    const applySwing = (name: BoneName, amount: number) => {
-      const obj  = scene.getObjectByName(name);
-      const rest = restPose.current[name];
+    const movementSpeed = Math.abs(
+      targetAngle.current -
+        currentAngle.current
+    );
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // APPLY SWING
+    // ─────────────────────────────────────────────────────────────────────────
+
+    const applySwing = (
+      name: string,
+      amount: number
+    ) => {
+
+      const obj =
+        scene.getObjectByName(name);
+
+      const rest =
+        restPose.current[name];
+
       if (!obj || !rest) return;
 
+      // Reset to original pose
       obj.quaternion.copy(rest);
-      _swingQuat.setFromAxisAngle(axis, amount);
-      obj.quaternion.multiply(_swingQuat); // multiply = local space
+
+      // Local-space rotation
+      _swingQuat.setFromAxisAngle(
+        LOCAL_Y,
+        amount
+      );
+
+      obj.quaternion.multiply(
+        _swingQuat
+      );
     };
 
-    if (movementSpeed > 0.00001) {
-      walkTime.current += delta * movementSpeed * 30;
-      const swing =
-        Math.sin(walkTime.current) *
-        Math.min(movementSpeed * 120, 0.6);
+    // ─────────────────────────────────────────────────────────────────────────
+    // WALK ANIMATION
+    // ─────────────────────────────────────────────────────────────────────────
 
-      applySwing("frodo_left_hand",   swing);
-      applySwing("frodo_right_hand", -swing);
-      applySwing("frodo_leg",        -swing);
-      applySwing("frodo_leg001",      swing);
+    if (movementSpeed > 0.00001) {
+
+      // Advance walk cycle
+      walkTime.current +=
+        delta *
+        movementSpeed *
+        WALK_CYCLE_SPEED;
+
+      // Base oscillation
+      const baseSwing =
+        Math.sin(walkTime.current);
+
+      // ---------------------------------------------------------------------
+      // Limb-specific swing calculations
+      // ---------------------------------------------------------------------
+
+      const leftHandSwing =
+
+        LEFT_HAND_OFFSET +
+
+        baseSwing *
+
+        Math.min(
+          movementSpeed * SWING_BUILDUP,
+          LEFT_HAND_SWING_RANGE
+        );
+
+      const rightHandSwing =
+
+        RIGHT_HAND_OFFSET +
+
+        baseSwing *
+
+        Math.min(
+          movementSpeed * SWING_BUILDUP,
+          RIGHT_HAND_SWING_RANGE
+        );
+
+      const leftLegSwing =
+
+        LEFT_LEG_OFFSET +
+
+        baseSwing *
+
+        Math.min(
+          movementSpeed * SWING_BUILDUP,
+          LEFT_LEG_SWING_RANGE
+        );
+
+      const rightLegSwing =
+
+        RIGHT_LEG_OFFSET +
+
+        baseSwing *
+
+        Math.min(
+          movementSpeed * SWING_BUILDUP,
+          RIGHT_LEG_SWING_RANGE
+        );
+
+      // ---------------------------------------------------------------------
+      // APPLY
+      // ---------------------------------------------------------------------
+
+      // Arms opposite
+      applySwing(
+        "frodo_left_hand",
+        leftHandSwing
+      );
+
+      applySwing(
+        "frodo_right_hand",
+        -rightHandSwing
+      );
+
+      // Legs opposite
+      applySwing(
+        "frodo_leg",
+        -leftLegSwing
+      );
+
+      applySwing(
+        "frodo_leg001",
+        rightLegSwing
+      );
+
     } else {
+
+      // Smooth return to rest pose
       for (const name of BONE_NAMES) {
-        const obj  = scene.getObjectByName(name);
-        const rest = restPose.current[name];
-        if (obj && rest) obj.quaternion.slerp(rest, 0.1);
+
+        const obj =
+          scene.getObjectByName(name);
+
+        const rest =
+          restPose.current[name];
+
+        if (obj && rest) {
+
+          obj.quaternion.slerp(
+            rest,
+            0.1
+          );
+        }
       }
     }
   });
