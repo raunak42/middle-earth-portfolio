@@ -5,7 +5,7 @@ import { useEffect } from "react";
 import * as THREE from "three";
 
 export default function Cave() {
-  const gltf = useGLTF("/models/portfolio_room_export_FINAL_REVISED_v02_MASKED_020.glb");
+  const gltf = useGLTF("/models/portfolio_room_export_NEW_MASKED_020_AURA_BLEND.glb");
 
   useEffect(() => {
     gltf.scene.traverse((obj) => {
@@ -55,4 +55,4 @@ export default function Cave() {
   );
 }
 
-useGLTF.preload("/models/portfolio_room_export_FINAL_REVISED_v02_MASKED_020.glb");
+useGLTF.preload("/models/portfolio_room_export_NEW_MASKED_020_AURA_BLEND.glb");
