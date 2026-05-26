@@ -4,378 +4,354 @@ import { useEffect, useRef } from "react";
 import { useFrame, useThree } from "@react-three/fiber";
 import * as THREE from "three";
 
-// ─────────────────────────────────────────────────────────────────────────────
-// CAMERA / SCENE CONSTANTS
-// ─────────────────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────
+// CAMERA
+// ─────────────────────────────────────────────────────────────
 
-const RADIUS = 6.42;
-const HEIGHT = 2.61;
+const BASE_RADIUS = 6.42;
+const BASE_HEIGHT = 4.21;
 
 const INITIAL_ANGLE = Math.atan2(-5.005, 4.025);
 
 const SCROLL_SPEED = 0.0008;
 const CAMERA_SMOOTHING = 0.06;
 
+// Roller coaster parameters
+const RADIUS_AMPLITUDE = 2;
+const RADIUS_FREQUENCY = 1.5;
+
+const HEIGHT_AMPLITUDE = 1.5;
+const HEIGHT_FREQUENCY = 2.3;
+
+const HEIGHT_OFFSET = 2.5;
+
+// ─────────────────────────────────────────────────────────────
+// MOUSE FOLLOW — INERTIA TUNING
+// ─────────────────────────────────────────────────────────────
+
+const MOUSE_SENSITIVITY = 1;
+const MOUSE_SMOOTHING = 0.03;
+
+// ─────────────────────────────────────────────────────────────
+// PATH
+// ─────────────────────────────────────────────────────────────
+
 const START_X = 6.5;
 const START_Z = -7.5;
 
-const CHAR_RADIUS = Math.sqrt(
-  START_X ** 2 + START_Z ** 2
-);
-
-const CHARACTER_START_ANGLE = Math.atan2(
-  START_Z,
-  START_X
-);
+const CHAR_RADIUS = Math.sqrt(START_X ** 2 + START_Z ** 2);
+const CHARACTER_START_ANGLE = Math.atan2(START_Z, START_X);
 
 const CHAR_Y = 3.5;
 
-// ─────────────────────────────────────────────────────────────────────────────
-// WALK ANIMATION CONSTANTS
-// ─────────────────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────
+// SWAP ANIMATION
+// ─────────────────────────────────────────────────────────────
 
-// Swing range (max angle in radians)
+const WALK_Y_MOVING = CHAR_Y + 0.5;
+const WALK_Y_STOPPED = CHAR_Y - 1.8;
+const IDLE_Y_MOVING = CHAR_Y - 2;
+const IDLE_Y_STOPPED = CHAR_Y + 0.7;
 
-const LEFT_HAND_SWING_RANGE  = 1.1;
+const SWAP_SMOOTHING = 0.12;
+
+// ─────────────────────────────────────────────────────────────
+// IDLE FLOATING
+// ─────────────────────────────────────────────────────────────
+
+const FLOAT_AMPLITUDE = 0.15;
+const FLOAT_SPEED = 1.5;
+
+// ─────────────────────────────────────────────────────────────
+// WALK ANIMATION
+// ─────────────────────────────────────────────────────────────
+
+// Multiplier applied to smoothed movement speed to set cycle tempo.
+// Higher = faster leg swing per unit of scroll speed.
+const WALK_CYCLE_SPEED = 60;
+
+// How quickly the smoothed speed catches up to actual movement speed.
+// Lower = more inertia / smoother, higher = more responsive.
+const SPEED_SMOOTHING = 0.08;
+
+const LEFT_HAND_SWING_RANGE = 1.1;
 const RIGHT_HAND_SWING_RANGE = 1.1;
+const LEFT_LEG_SWING_RANGE = 1.1;
+const RIGHT_LEG_SWING_RANGE = 1.1;
 
-const LEFT_LEG_SWING_RANGE   = 1.1;
-const RIGHT_LEG_SWING_RANGE  = 1.1;
-
-// -----------------------------------------------------------------------------
-// SWING OFFSETS
-//
-// Positive  -> shifts whole motion forward
-// Negative  -> shifts whole motion backward
-//
-// Useful when:
-//
-//   a limb goes too far backward
-//   OR
-//   doesn't come enough forward
-// -----------------------------------------------------------------------------
-
-const LEFT_HAND_OFFSET  = 0.0;
+const LEFT_HAND_OFFSET = 0.0;
 const RIGHT_HAND_OFFSET = -1;
+const LEFT_LEG_OFFSET = 0.5;
+const RIGHT_LEG_OFFSET = 0.5;
 
-const LEFT_LEG_OFFSET   = 0.0;
-const RIGHT_LEG_OFFSET  = 0.0;
-
-// How quickly swing reaches max
-const SWING_BUILDUP = 8;
-
-// Walk cycle speed
-const WALK_CYCLE_SPEED = 18;
-
-// ─────────────────────────────────────────────────────────────────────────────
-// LOCAL OBJECT AXIS
-// ─────────────────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────
+// AXIS
+// ─────────────────────────────────────────────────────────────
 
 const LOCAL_Y = new THREE.Vector3(0, 1, 0);
+
+// ─────────────────────────────────────────────────────────────
+// BONE LIST
+// ─────────────────────────────────────────────────────────────
 
 const BONE_NAMES = [
   "frodo_left_hand",
   "frodo_right_hand",
   "frodo_leg",
-  "frodo_leg001", // GLTFLoader strips dots
+  "frodo_leg001",
 ];
 
-// ─────────────────────────────────────────────────────────────────────────────
-// REUSABLE OBJECTS
-// ─────────────────────────────────────────────────────────────────────────────
-
-const _swingQuat = new THREE.Quaternion();
-
-// ─────────────────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────
 // COMPONENT
-// ─────────────────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────
 
 export default function CameraRig() {
-
-  const get = useThree((state) => state.get);
+  const get = useThree((s) => s.get);
 
   const currentAngle = useRef(INITIAL_ANGLE);
-  const targetAngle  = useRef(INITIAL_ANGLE);
+  const targetAngle = useRef(INITIAL_ANGLE);
 
   const walkTime = useRef(0);
+  const floatTime = useRef(0);
 
-  // Rest-pose local quaternions
-  const restPose = useRef<
-    Partial<Record<string, THREE.Quaternion>>
-  >({});
+  const walkY = useRef(WALK_Y_STOPPED);
+  const idleY = useRef(IDLE_Y_STOPPED);
 
-  // ───────────────────────────────────────────────────────────────────────────
-  // Capture rest pose
-  // ───────────────────────────────────────────────────────────────────────────
+  const restPose = useRef<Record<string, THREE.Quaternion>>({});
+
+  // Mouse state
+  const mouseX = useRef(0);
+  const mouseY = useRef(0);
+  const smoothMouseX = useRef(0);
+  const smoothMouseY = useRef(0);
+
+  // Smoothed movement speed — lerped each frame to eliminate jitter
+  // from raw movementSpeed being noisy at slow scroll inputs.
+  const smoothedSpeed = useRef(0);
+
+  // ─────────────────────────────────────────────
+  // REST POSE CAPTURE
+  // ─────────────────────────────────────────────
 
   useEffect(() => {
-
     const tryCapture = () => {
-
       const { scene } = get();
-
-      let allFound = true;
-
+      let ok = true;
       for (const name of BONE_NAMES) {
-
         if (restPose.current[name]) continue;
-
-        const obj =
-          scene.getObjectByName(name);
-
+        const obj = scene.getObjectByName(name);
         if (!obj) {
-
-          allFound = false;
+          ok = false;
           continue;
         }
-
-        restPose.current[name] =
-          obj.quaternion.clone();
+        restPose.current[name] = obj.quaternion.clone();
       }
-
-      return allFound;
+      return ok;
     };
-
     if (!tryCapture()) {
-
       const id = setInterval(() => {
-
-        if (tryCapture()) {
-          clearInterval(id);
-        }
-
+        if (tryCapture()) clearInterval(id);
       }, 100);
-
       return () => clearInterval(id);
     }
-
   }, [get]);
 
-  // ───────────────────────────────────────────────────────────────────────────
-  // Scroll
-  // ───────────────────────────────────────────────────────────────────────────
+  // ─────────────────────────────────────────────
+  // SCROLL
+  // ─────────────────────────────────────────────
 
   useEffect(() => {
-
     const onWheel = (e: WheelEvent) => {
-
       e.preventDefault();
-
-      targetAngle.current -=
-        e.deltaY * SCROLL_SPEED;
+      targetAngle.current -= e.deltaY * SCROLL_SPEED;
     };
-
-    window.addEventListener("wheel", onWheel, {
-      passive: false,
-    });
-
-    return () => {
-
-      window.removeEventListener(
-        "wheel",
-        onWheel
-      );
-    };
-
+    window.addEventListener("wheel", onWheel, { passive: false });
+    return () => window.removeEventListener("wheel", onWheel);
   }, []);
 
-  // ───────────────────────────────────────────────────────────────────────────
-  // Frame loop
-  // ───────────────────────────────────────────────────────────────────────────
+  // ─────────────────────────────────────────────
+  // MOUSE LISTENER
+  // ─────────────────────────────────────────────
+
+  useEffect(() => {
+    const onMouseMove = (e: MouseEvent) => {
+      mouseX.current = (e.clientX / window.innerWidth) * 2 - 1;
+      mouseY.current = -(e.clientY / window.innerHeight) * 2 + 1;
+    };
+    window.addEventListener("mousemove", onMouseMove);
+    return () => window.removeEventListener("mousemove", onMouseMove);
+  }, []);
+
+  // ─────────────────────────────────────────────
+  // FRAME LOOP
+  // ─────────────────────────────────────────────
 
   useFrame((_state, delta) => {
-
     const { camera, scene } = get();
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // CAMERA
-    // ─────────────────────────────────────────────────────────────────────────
+    // ─────────────────────────────────────────────
+    // CAMERA (ROLLER COASTER STYLE)
+    // ─────────────────────────────────────────────
 
     currentAngle.current +=
-      (targetAngle.current -
-        currentAngle.current) *
-      CAMERA_SMOOTHING;
+      (targetAngle.current - currentAngle.current) * CAMERA_SMOOTHING;
 
-    camera.position.set(
-      Math.sin(currentAngle.current) * RADIUS,
-      HEIGHT,
-      Math.cos(currentAngle.current) * RADIUS
+    const radiusWave = Math.sin(currentAngle.current * RADIUS_FREQUENCY);
+    const dynamicRadius = BASE_RADIUS + radiusWave * RADIUS_AMPLITUDE;
+
+    const heightWave1 = Math.sin(currentAngle.current * HEIGHT_FREQUENCY);
+    const heightWave2 = Math.cos(
+      currentAngle.current * HEIGHT_FREQUENCY * HEIGHT_OFFSET,
+    );
+    const dynamicHeight =
+      BASE_HEIGHT +
+      heightWave1 * HEIGHT_AMPLITUDE +
+      heightWave2 * (HEIGHT_AMPLITUDE * 0.3);
+
+    const basePos = new THREE.Vector3(
+      Math.sin(currentAngle.current) * dynamicRadius,
+      dynamicHeight,
+      Math.cos(currentAngle.current) * dynamicRadius,
     );
 
-    camera.lookAt(0, 2, 0);
+    // ─────────────────────────────────────────────
+    // MOUSE OFFSET (INERTIAL LAG)
+    // ─────────────────────────────────────────────
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // CHARACTER ROOT
-    // ─────────────────────────────────────────────────────────────────────────
+    smoothMouseX.current +=
+      (mouseX.current - smoothMouseX.current) * MOUSE_SMOOTHING;
+    smoothMouseY.current +=
+      (mouseY.current - smoothMouseY.current) * MOUSE_SMOOTHING;
 
-    const character =
-      scene.getObjectByName(
-        "character_walk_root"
-      );
+    const target = new THREE.Vector3(0, 3, 0);
+    const forward = new THREE.Vector3()
+      .subVectors(target, basePos)
+      .normalize();
+    const up = new THREE.Vector3(0, 1, 0);
+    const right = new THREE.Vector3()
+      .crossVectors(forward, up)
+      .normalize();
+    const cameraUp = new THREE.Vector3()
+      .crossVectors(right, forward)
+      .normalize();
 
-    if (!character) return;
+    const offset = new THREE.Vector3()
+      .addScaledVector(right, -smoothMouseX.current * MOUSE_SENSITIVITY)
+      .addScaledVector(cameraUp, -smoothMouseY.current * MOUSE_SENSITIVITY);
+
+    camera.position.copy(basePos).add(offset);
+    camera.lookAt(target);
+
+    // ─────────────────────────────────────────────
+    // ROOTS
+    // ─────────────────────────────────────────────
+
+    const walkRoot = scene.getObjectByName("character_walk_root");
+    const idleRoot = scene.getObjectByName("character_idle_root");
+
+    if (!walkRoot || !idleRoot) return;
 
     const charAngle =
-      CHARACTER_START_ANGLE -
-      (currentAngle.current -
-        INITIAL_ANGLE);
+      CHARACTER_START_ANGLE - (currentAngle.current - INITIAL_ANGLE);
 
-    character.position.set(
-      Math.cos(charAngle) * CHAR_RADIUS,
-      CHAR_Y,
-      Math.sin(charAngle) * CHAR_RADIUS
-    );
+    const x = Math.cos(charAngle) * CHAR_RADIUS;
+    const z = Math.sin(charAngle) * CHAR_RADIUS;
 
-    character.rotation.y =
-      -charAngle + Math.PI * 0.5;
-
-    // ─────────────────────────────────────────────────────────────────────────
+    // ─────────────────────────────────────────────
     // MOVEMENT SPEED
-    // ─────────────────────────────────────────────────────────────────────────
+    // ─────────────────────────────────────────────
 
     const movementSpeed = Math.abs(
-      targetAngle.current -
-        currentAngle.current
+      targetAngle.current - currentAngle.current,
     );
+    const isMoving = movementSpeed > 0.00001;
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // APPLY SWING
-    // ─────────────────────────────────────────────────────────────────────────
+    // ─────────────────────────────────────────────
+    // ANIMATED Y POSITIONS
+    // ─────────────────────────────────────────────
 
-    const applySwing = (
-      name: string,
-      amount: number
-    ) => {
+    const targetWalkY = isMoving ? WALK_Y_MOVING : WALK_Y_STOPPED;
+    const targetIdleY = isMoving ? IDLE_Y_MOVING : IDLE_Y_STOPPED;
 
-      const obj =
-        scene.getObjectByName(name);
+    walkY.current += (targetWalkY - walkY.current) * SWAP_SMOOTHING;
+    idleY.current += (targetIdleY - idleY.current) * SWAP_SMOOTHING;
 
-      const rest =
-        restPose.current[name];
+    // ─────────────────────────────────────────────
+    // IDLE FLOATING
+    // ─────────────────────────────────────────────
 
+    floatTime.current += delta * FLOAT_SPEED;
+    const floatOffset = Math.sin(floatTime.current) * FLOAT_AMPLITUDE;
+
+    walkRoot.position.set(x, walkY.current, z);
+    idleRoot.position.set(x, idleY.current + floatOffset, z);
+
+    const rotationY = -charAngle + Math.PI * 0.5;
+
+    // ─────────────────────────────────────────────
+    // WALK
+    // ─────────────────────────────────────────────
+
+    walkRoot.rotation.y = rotationY;
+
+    // ─────────────────────────────────────────────
+    // IDLE
+    // ─────────────────────────────────────────────
+
+    idleRoot.rotation.set(1.5, 0, 3);
+    idleRoot.rotateOnWorldAxis(LOCAL_Y, rotationY);
+
+    // ─────────────────────────────────────────────
+    // WALK ANIMATION  ← the fixed section
+    // ─────────────────────────────────────────────
+
+    const applySwing = (name: string, amount: number) => {
+      const obj = scene.getObjectByName(name);
+      const rest = restPose.current[name];
       if (!obj || !rest) return;
-
-      // Reset to original pose
       obj.quaternion.copy(rest);
-
-      // Local-space rotation
-      _swingQuat.setFromAxisAngle(
-        LOCAL_Y,
-        amount
-      );
-
-      obj.quaternion.multiply(
-        _swingQuat
-      );
+      const q = new THREE.Quaternion().setFromAxisAngle(LOCAL_Y, amount);
+      obj.quaternion.multiply(q);
     };
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // WALK ANIMATION
-    // ─────────────────────────────────────────────────────────────────────────
+    // ── Smooth speed only while moving (removes jitter).
+    //    Snap to 0 immediately when stopped so animation halts instantly.
+    if (isMoving) {
+      smoothedSpeed.current +=
+        (movementSpeed - smoothedSpeed.current) * SPEED_SMOOTHING;
+    } else {
+      smoothedSpeed.current = 0;
+    }
 
-    if (movementSpeed > 0.00001) {
+    if (smoothedSpeed.current > 0.00001) {
+      // Cycle speed is proportional to smoothed scroll speed —
+      // slow scroll = slow walk, fast scroll = fast walk, always full range.
+      walkTime.current += delta * smoothedSpeed.current * WALK_CYCLE_SPEED;
 
-      // Advance walk cycle
-      walkTime.current +=
-        delta *
-        movementSpeed *
-        WALK_CYCLE_SPEED;
+      const base = Math.sin(walkTime.current);
 
-      // Base oscillation
-      const baseSwing =
-        Math.sin(walkTime.current);
-
-      // ---------------------------------------------------------------------
-      // Limb-specific swing calculations
-      // ---------------------------------------------------------------------
-
-      const leftHandSwing =
-
-        LEFT_HAND_OFFSET +
-
-        baseSwing *
-
-        Math.min(
-          movementSpeed * SWING_BUILDUP,
-          LEFT_HAND_SWING_RANGE
-        );
-
-      const rightHandSwing =
-
-        RIGHT_HAND_OFFSET +
-
-        baseSwing *
-
-        Math.min(
-          movementSpeed * SWING_BUILDUP,
-          RIGHT_HAND_SWING_RANGE
-        );
-
-      const leftLegSwing =
-
-        LEFT_LEG_OFFSET +
-
-        baseSwing *
-
-        Math.min(
-          movementSpeed * SWING_BUILDUP,
-          LEFT_LEG_SWING_RANGE
-        );
-
-      const rightLegSwing =
-
-        RIGHT_LEG_OFFSET +
-
-        baseSwing *
-
-        Math.min(
-          movementSpeed * SWING_BUILDUP,
-          RIGHT_LEG_SWING_RANGE
-        );
-
-      // ---------------------------------------------------------------------
-      // APPLY
-      // ---------------------------------------------------------------------
-
-      // Arms opposite
       applySwing(
         "frodo_left_hand",
-        leftHandSwing
+        LEFT_HAND_OFFSET + base * LEFT_HAND_SWING_RANGE,
       );
-
       applySwing(
         "frodo_right_hand",
-        -rightHandSwing
+        -(RIGHT_HAND_OFFSET + base * RIGHT_HAND_SWING_RANGE),
       );
-
-      // Legs opposite
       applySwing(
         "frodo_leg",
-        -leftLegSwing
+        -(LEFT_LEG_OFFSET + base * LEFT_LEG_SWING_RANGE),
       );
-
       applySwing(
         "frodo_leg001",
-        rightLegSwing
+        RIGHT_LEG_OFFSET + base * RIGHT_LEG_SWING_RANGE,
       );
-
     } else {
-
-      // Smooth return to rest pose
       for (const name of BONE_NAMES) {
-
-        const obj =
-          scene.getObjectByName(name);
-
-        const rest =
-          restPose.current[name];
-
+        const obj = scene.getObjectByName(name);
+        const rest = restPose.current[name];
         if (obj && rest) {
-
-          obj.quaternion.slerp(
-            rest,
-            0.1
-          );
+          obj.quaternion.slerp(rest, 0.1);
         }
       }
     }
