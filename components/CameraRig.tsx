@@ -45,7 +45,7 @@ const CHARACTER_START_ANGLE = Math.atan2(START_Z, START_X);
 const CHAR_Y = 3.5;
 
 // ─────────────────────────────────────────────────────────────
-// SWAP ANIMATION
+// SWAP ANIMATION (Frodo)
 // ─────────────────────────────────────────────────────────────
 
 const WALK_Y_MOVING = CHAR_Y + 0.5;
@@ -63,15 +63,10 @@ const FLOAT_AMPLITUDE = 0.15;
 const FLOAT_SPEED = 1.5;
 
 // ─────────────────────────────────────────────────────────────
-// WALK ANIMATION
+// WALK ANIMATION (Frodo)
 // ─────────────────────────────────────────────────────────────
 
-// Multiplier applied to smoothed movement speed to set cycle tempo.
-// Higher = faster leg swing per unit of scroll speed.
 const WALK_CYCLE_SPEED = 60;
-
-// How quickly the smoothed speed catches up to actual movement speed.
-// Lower = more inertia / smoother, higher = more responsive.
 const SPEED_SMOOTHING = 0.08;
 
 const LEFT_HAND_SWING_RANGE = 1.1;
@@ -85,21 +80,50 @@ const LEFT_LEG_OFFSET = 0.5;
 const RIGHT_LEG_OFFSET = 0.5;
 
 // ─────────────────────────────────────────────────────────────
+// GOLLUM
+// ─────────────────────────────────────────────────────────────
+
+// Angular distance behind Frodo on the shared circle path.
+// Positive = trails behind in the direction of travel.
+const GOLLUM_FOLLOW_OFFSET = 0.55;
+
+// Gollum sits a little lower than Frodo (crouched posture).
+const GOLLUM_Y = CHAR_Y +0.5;
+
+// Slightly faster cadence than Frodo — scurrying, nervous energy.
+const GOLLUM_WALK_CYCLE_SPEED = 80;
+
+const GOLLUM_LEFT_ARM_SWING  = 0.7;
+const GOLLUM_RIGHT_ARM_SWING = 0.7;
+const GOLLUM_LEFT_LEG_SWING  = 0.7;
+const GOLLUM_RIGHT_LEG_SWING = 0.7;
+
+// ─────────────────────────────────────────────────────────────
 // AXIS
 // ─────────────────────────────────────────────────────────────
 
 const LOCAL_Y = new THREE.Vector3(0, 1, 0);
 
 // ─────────────────────────────────────────────────────────────
-// BONE LIST
+// BONE LISTS
 // ─────────────────────────────────────────────────────────────
 
-const BONE_NAMES = [
+const FRODO_BONE_NAMES = [
   "frodo_left_hand",
   "frodo_right_hand",
   "frodo_leg",
   "frodo_leg001",
 ];
+
+const GOLLUM_BONE_NAMES = [
+  "gollum_left_arm",
+  "gollum_right_arm",
+  "gollum_leg",
+  // Three/GLTFLoader normalizes Blender's "gollum_leg.001" to "gollum_leg001".
+  "gollum_leg001",
+];
+
+const ALL_BONE_NAMES = [...FRODO_BONE_NAMES, ...GOLLUM_BONE_NAMES];
 
 // ─────────────────────────────────────────────────────────────
 // COMPONENT
@@ -109,49 +133,45 @@ export default function CameraRig() {
   const get = useThree((s) => s.get);
 
   const currentAngle = useRef(INITIAL_ANGLE);
-  const targetAngle = useRef(INITIAL_ANGLE);
+  const targetAngle  = useRef(INITIAL_ANGLE);
 
-  const walkTime = useRef(0);
-  const floatTime = useRef(0);
+  const walkTime       = useRef(0);
+  const gollumWalkTime = useRef(0);
+  const floatTime      = useRef(0);
 
   const walkY = useRef(WALK_Y_STOPPED);
   const idleY = useRef(IDLE_Y_STOPPED);
 
   const restPose = useRef<Record<string, THREE.Quaternion>>({});
+  const gollumBaseRotation = useRef<THREE.Euler | null>(null);
 
   // Mouse state
-  const mouseX = useRef(0);
-  const mouseY = useRef(0);
+  const mouseX       = useRef(0);
+  const mouseY       = useRef(0);
   const smoothMouseX = useRef(0);
   const smoothMouseY = useRef(0);
 
-  // Smoothed movement speed — lerped each frame to eliminate jitter
-  // from raw movementSpeed being noisy at slow scroll inputs.
+  // Shared smoothed speed — both characters react to the same scroll input.
   const smoothedSpeed = useRef(0);
 
   // ─────────────────────────────────────────────
-  // REST POSE CAPTURE
+  // REST POSE CAPTURE — Frodo + Gollum
   // ─────────────────────────────────────────────
 
   useEffect(() => {
     const tryCapture = () => {
       const { scene } = get();
       let ok = true;
-      for (const name of BONE_NAMES) {
+      for (const name of ALL_BONE_NAMES) {
         if (restPose.current[name]) continue;
         const obj = scene.getObjectByName(name);
-        if (!obj) {
-          ok = false;
-          continue;
-        }
+        if (!obj) { ok = false; continue; }
         restPose.current[name] = obj.quaternion.clone();
       }
       return ok;
     };
     if (!tryCapture()) {
-      const id = setInterval(() => {
-        if (tryCapture()) clearInterval(id);
-      }, 100);
+      const id = setInterval(() => { if (tryCapture()) clearInterval(id); }, 100);
       return () => clearInterval(id);
     }
   }, [get]);
@@ -196,13 +216,11 @@ export default function CameraRig() {
     currentAngle.current +=
       (targetAngle.current - currentAngle.current) * CAMERA_SMOOTHING;
 
-    const radiusWave = Math.sin(currentAngle.current * RADIUS_FREQUENCY);
+    const radiusWave   = Math.sin(currentAngle.current * RADIUS_FREQUENCY);
     const dynamicRadius = BASE_RADIUS + radiusWave * RADIUS_AMPLITUDE;
 
-    const heightWave1 = Math.sin(currentAngle.current * HEIGHT_FREQUENCY);
-    const heightWave2 = Math.cos(
-      currentAngle.current * HEIGHT_FREQUENCY * HEIGHT_OFFSET,
-    );
+    const heightWave1  = Math.sin(currentAngle.current * HEIGHT_FREQUENCY);
+    const heightWave2  = Math.cos(currentAngle.current * HEIGHT_FREQUENCY * HEIGHT_OFFSET);
     const dynamicHeight =
       BASE_HEIGHT +
       heightWave1 * HEIGHT_AMPLITUDE +
@@ -218,32 +236,24 @@ export default function CameraRig() {
     // MOUSE OFFSET (INERTIAL LAG)
     // ─────────────────────────────────────────────
 
-    smoothMouseX.current +=
-      (mouseX.current - smoothMouseX.current) * MOUSE_SMOOTHING;
-    smoothMouseY.current +=
-      (mouseY.current - smoothMouseY.current) * MOUSE_SMOOTHING;
+    smoothMouseX.current += (mouseX.current - smoothMouseX.current) * MOUSE_SMOOTHING;
+    smoothMouseY.current += (mouseY.current - smoothMouseY.current) * MOUSE_SMOOTHING;
 
-    const target = new THREE.Vector3(0, 3, 0);
-    const forward = new THREE.Vector3()
-      .subVectors(target, basePos)
-      .normalize();
-    const up = new THREE.Vector3(0, 1, 0);
-    const right = new THREE.Vector3()
-      .crossVectors(forward, up)
-      .normalize();
-    const cameraUp = new THREE.Vector3()
-      .crossVectors(right, forward)
-      .normalize();
+    const target   = new THREE.Vector3(0, 3, 0);
+    const forward  = new THREE.Vector3().subVectors(target, basePos).normalize();
+    const up       = new THREE.Vector3(0, 1, 0);
+    const right    = new THREE.Vector3().crossVectors(forward, up).normalize();
+    const cameraUp = new THREE.Vector3().crossVectors(right, forward).normalize();
 
     const offset = new THREE.Vector3()
-      .addScaledVector(right, -smoothMouseX.current * MOUSE_SENSITIVITY)
+      .addScaledVector(right,    -smoothMouseX.current * MOUSE_SENSITIVITY)
       .addScaledVector(cameraUp, -smoothMouseY.current * MOUSE_SENSITIVITY);
 
     camera.position.copy(basePos).add(offset);
     camera.lookAt(target);
 
     // ─────────────────────────────────────────────
-    // ROOTS
+    // FRODO ROOTS
     // ─────────────────────────────────────────────
 
     const walkRoot = scene.getObjectByName("character_walk_root");
@@ -261,13 +271,11 @@ export default function CameraRig() {
     // MOVEMENT SPEED
     // ─────────────────────────────────────────────
 
-    const movementSpeed = Math.abs(
-      targetAngle.current - currentAngle.current,
-    );
-    const isMoving = movementSpeed > 0.00001;
+    const movementSpeed = Math.abs(targetAngle.current - currentAngle.current);
+    const isMoving      = movementSpeed > 0.00001;
 
     // ─────────────────────────────────────────────
-    // ANIMATED Y POSITIONS
+    // ANIMATED Y POSITIONS (Frodo swap)
     // ─────────────────────────────────────────────
 
     const targetWalkY = isMoving ? WALK_Y_MOVING : WALK_Y_STOPPED;
@@ -288,34 +296,15 @@ export default function CameraRig() {
 
     const rotationY = -charAngle + Math.PI * 0.5;
 
-    // ─────────────────────────────────────────────
-    // WALK
-    // ─────────────────────────────────────────────
-
     walkRoot.rotation.y = rotationY;
-
-    // ─────────────────────────────────────────────
-    // IDLE
-    // ─────────────────────────────────────────────
 
     idleRoot.rotation.set(1.5, 0, 3);
     idleRoot.rotateOnWorldAxis(LOCAL_Y, rotationY);
 
     // ─────────────────────────────────────────────
-    // WALK ANIMATION  ← the fixed section
+    // SHARED SMOOTHED SPEED
     // ─────────────────────────────────────────────
 
-    const applySwing = (name: string, amount: number) => {
-      const obj = scene.getObjectByName(name);
-      const rest = restPose.current[name];
-      if (!obj || !rest) return;
-      obj.quaternion.copy(rest);
-      const q = new THREE.Quaternion().setFromAxisAngle(LOCAL_Y, amount);
-      obj.quaternion.multiply(q);
-    };
-
-    // ── Smooth speed only while moving (removes jitter).
-    //    Snap to 0 immediately when stopped so animation halts instantly.
     if (isMoving) {
       smoothedSpeed.current +=
         (movementSpeed - smoothedSpeed.current) * SPEED_SMOOTHING;
@@ -323,36 +312,83 @@ export default function CameraRig() {
       smoothedSpeed.current = 0;
     }
 
+    // ─────────────────────────────────────────────
+    // SWING HELPER
+    // ─────────────────────────────────────────────
+
+    const applySwing = (name: string, amount: number) => {
+      const obj  = scene.getObjectByName(name);
+      const rest = restPose.current[name];
+      if (!obj || !rest) return;
+      obj.quaternion.copy(rest);
+      const q = new THREE.Quaternion().setFromAxisAngle(LOCAL_Y, amount);
+      obj.quaternion.multiply(q);
+    };
+
+    // ─────────────────────────────────────────────
+    // FRODO WALK ANIMATION
+    // ─────────────────────────────────────────────
+
     if (smoothedSpeed.current > 0.00001) {
-      // Cycle speed is proportional to smoothed scroll speed —
-      // slow scroll = slow walk, fast scroll = fast walk, always full range.
       walkTime.current += delta * smoothedSpeed.current * WALK_CYCLE_SPEED;
 
       const base = Math.sin(walkTime.current);
 
-      applySwing(
-        "frodo_left_hand",
-        LEFT_HAND_OFFSET + base * LEFT_HAND_SWING_RANGE,
-      );
-      applySwing(
-        "frodo_right_hand",
-        -(RIGHT_HAND_OFFSET + base * RIGHT_HAND_SWING_RANGE),
-      );
-      applySwing(
-        "frodo_leg",
-        -(LEFT_LEG_OFFSET + base * LEFT_LEG_SWING_RANGE),
-      );
-      applySwing(
-        "frodo_leg001",
-        RIGHT_LEG_OFFSET + base * RIGHT_LEG_SWING_RANGE,
-      );
+      applySwing("frodo_left_hand",  LEFT_HAND_OFFSET  + base *  LEFT_HAND_SWING_RANGE);
+      applySwing("frodo_right_hand", -(RIGHT_HAND_OFFSET + base * RIGHT_HAND_SWING_RANGE));
+      applySwing("frodo_leg",        -(LEFT_LEG_OFFSET  + base *  LEFT_LEG_SWING_RANGE));
+      applySwing("frodo_leg001",     RIGHT_LEG_OFFSET  + base *  RIGHT_LEG_SWING_RANGE);
     } else {
-      for (const name of BONE_NAMES) {
-        const obj = scene.getObjectByName(name);
+      for (const name of FRODO_BONE_NAMES) {
+        const obj  = scene.getObjectByName(name);
         const rest = restPose.current[name];
-        if (obj && rest) {
-          obj.quaternion.slerp(rest, 0.1);
-        }
+        if (obj && rest) obj.quaternion.slerp(rest, 0.1);
+      }
+    }
+
+    // ─────────────────────────────────────────────
+    // GOLLUM POSITION
+    // ─────────────────────────────────────────────
+
+    const gollumRoot = scene.getObjectByName("gollum_body");
+    if (!gollumRoot) return;
+
+    // Trail behind Frodo by a fixed angular offset on the same circle.
+    const gollumAngle = charAngle - GOLLUM_FOLLOW_OFFSET;
+    const gx = Math.cos(gollumAngle) * CHAR_RADIUS;
+    const gz = Math.sin(gollumAngle) * CHAR_RADIUS;
+
+    if (!gollumBaseRotation.current) {
+      gollumBaseRotation.current = gollumRoot.rotation.clone();
+    }
+
+    gollumRoot.position.set(gx, GOLLUM_Y, gz);
+
+    // Same fix used for Frodo's angled idle root:
+    // reset to the exported/base rotation first, then rotate around WORLD Y.
+    // Directly assigning rotation.y makes Gollum spin around his tilted local axis.
+    gollumRoot.rotation.copy(gollumBaseRotation.current);
+    gollumRoot.rotateOnWorldAxis(LOCAL_Y, -gollumAngle + Math.PI * 0.5);
+
+    // ─────────────────────────────────────────────
+    // GOLLUM WALK ANIMATION
+    // ─────────────────────────────────────────────
+
+    if (smoothedSpeed.current > 0.00001) {
+      gollumWalkTime.current +=
+        delta * smoothedSpeed.current * GOLLUM_WALK_CYCLE_SPEED;
+
+      const base = Math.sin(gollumWalkTime.current);
+
+      applySwing("gollum_left_arm",  base  *  GOLLUM_LEFT_ARM_SWING);
+      applySwing("gollum_right_arm", -base *  GOLLUM_RIGHT_ARM_SWING);
+      applySwing("gollum_leg",       -base *  GOLLUM_LEFT_LEG_SWING);
+      applySwing("gollum_leg001",     base *  GOLLUM_RIGHT_LEG_SWING);
+    } else {
+      for (const name of GOLLUM_BONE_NAMES) {
+        const obj  = scene.getObjectByName(name);
+        const rest = restPose.current[name];
+        if (obj && rest) obj.quaternion.slerp(rest, 0.1);
       }
     }
   });
