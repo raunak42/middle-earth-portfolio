@@ -20,7 +20,7 @@ const CAMERA_SMOOTHING = 0.06;
 const RADIUS_AMPLITUDE = 2;
 const RADIUS_FREQUENCY = 1.5;
 
-const HEIGHT_AMPLITUDE = 1.5;
+const HEIGHT_AMPLITUDE = 1.0;
 const HEIGHT_FREQUENCY = 2.3;
 
 const HEIGHT_OFFSET = 2.5;
@@ -39,8 +39,8 @@ const WALL_LOOK_AT_HEIGHT = 2.5;
 // MOUSE FOLLOW — INERTIA TUNING
 // ─────────────────────────────────────────────────────────────
 
-const MOUSE_SENSITIVITY = 1;
-const MOUSE_SMOOTHING = 0.03;
+const MOUSE_LOOK_SENSITIVITY = 1.7;
+const MOUSE_SMOOTHING = 0.1;
 
 // ─────────────────────────────────────────────────────────────
 // PATH
@@ -58,7 +58,6 @@ const FRODO_RADIUS = CHAR_RADIUS;
 const GOLLUM_RADIUS = CHAR_RADIUS + 0.3;
 const NAZGUL_RADIUS = CHAR_RADIUS;
 const BOAT_FRODO_RADIUS = CHAR_RADIUS;
-const TENTACLE_FRODO_RADIUS = CHAR_RADIUS;
 
 const CHARACTER_START_ANGLE = Math.atan2(START_Z, START_X);
 
@@ -192,11 +191,18 @@ type SectionFrodoSceneBase = {
 // COMPONENT
 // ─────────────────────────────────────────────────────────────
 
-export default function CameraRig() {
+export default function CameraRig({
+  disabled = false,
+  zoom = 0,
+}: {
+  disabled?: boolean;
+  zoom?: number;
+}) {
   const get = useThree((s) => s.get);
 
   const currentAngle = useRef(INITIAL_ANGLE);
   const targetAngle = useRef(INITIAL_ANGLE);
+  const smoothZoom = useRef(zoom);
 
   const walkTime = useRef(0);
   const gollumWalkTime = useRef(0);
@@ -256,26 +262,34 @@ export default function CameraRig() {
   // ─────────────────────────────────────────────
 
   useEffect(() => {
+    if (disabled) return;
+
     const onWheel = (e: WheelEvent) => {
       e.preventDefault();
       targetAngle.current -= e.deltaY * SCROLL_SPEED;
     };
     window.addEventListener("wheel", onWheel, { passive: false });
     return () => window.removeEventListener("wheel", onWheel);
-  }, []);
+  }, [disabled]);
 
   // ─────────────────────────────────────────────
   // MOUSE LISTENER
   // ─────────────────────────────────────────────
 
   useEffect(() => {
+    if (disabled) {
+      mouseX.current = 0;
+      mouseY.current = 0;
+      return;
+    }
+
     const onMouseMove = (e: MouseEvent) => {
       mouseX.current = (e.clientX / window.innerWidth) * 2 - 1;
       mouseY.current = -(e.clientY / window.innerHeight) * 2 + 1;
     };
     window.addEventListener("mousemove", onMouseMove);
     return () => window.removeEventListener("mousemove", onMouseMove);
-  }, []);
+  }, [disabled]);
 
   // ─────────────────────────────────────────────
   // FRAME LOOP
@@ -292,8 +306,12 @@ export default function CameraRig() {
     currentAngle.current +=
       (targetAngle.current - currentAngle.current) * CAMERA_SMOOTHING;
 
+    smoothZoom.current += (zoom - smoothZoom.current) * 0.08;
+
     const radiusWave = Math.sin(currentAngle.current * RADIUS_FREQUENCY);
-    const dynamicRadius = BASE_RADIUS + radiusWave * RADIUS_AMPLITUDE;
+    const dynamicRadius =
+      (BASE_RADIUS + radiusWave * RADIUS_AMPLITUDE) *
+      (1 - smoothZoom.current * 0.84);
 
     const heightWave1 = Math.sin(currentAngle.current * HEIGHT_FREQUENCY);
     const heightWave2 = Math.cos(
@@ -331,12 +349,12 @@ export default function CameraRig() {
       .crossVectors(right, forward)
       .normalize();
 
-    const offset = new THREE.Vector3()
-      .addScaledVector(right, -smoothMouseX.current * MOUSE_SENSITIVITY)
-      .addScaledVector(cameraUp, -smoothMouseY.current * MOUSE_SENSITIVITY);
+    const lookOffset = new THREE.Vector3()
+      .addScaledVector(right, smoothMouseX.current * MOUSE_LOOK_SENSITIVITY)
+      .addScaledVector(cameraUp, smoothMouseY.current * MOUSE_LOOK_SENSITIVITY);
 
-    camera.position.copy(basePos).add(offset);
-    camera.lookAt(target);
+    camera.position.copy(basePos);
+    camera.lookAt(target.clone().add(lookOffset));
 
     // ─────────────────────────────────────────────
     // FRODO ROOTS
@@ -368,17 +386,11 @@ export default function CameraRig() {
     const frodoInBoatIsVisible =
       normalizedCharAngle > ARGONATH_COME_UP_AT &&
       normalizedCharAngle < ARGONATH_GO_DOWN_AT;
-    const frodoInMellonSection =
-      normalizedCharAngle > MELLON_COME_UP_AT &&
-      normalizedCharAngle < MELLON_GO_DOWN_AT;
-
     const walkCharacterIsVisible =
       normalizedCharAngle < GOLLUM_GO_DOWN_AT ||
       normalizedCharAngle > WALK_COME_UP_AT ||
-      frodoInMellonSection;
+      normalizedCharAngle > MELLON_COME_UP_AT;
 
-    // Replaced by the Nazgul chase in Mellon.
-    const frodoTentacleIsVisible = false;
     const sectionFrodoSceneIsVisible = frodoInBoatIsVisible;
 
     const targetWalkY =
@@ -401,12 +413,12 @@ export default function CameraRig() {
     walkRoot.position.set(x, walkY.current, z);
     idleRoot.position.set(x, idleY.current + floatOffset, z);
 
-    const rotationY = -charAngle + Math.PI * 0.5;
+    const rotationY = -charAngle + Math.PI * 0.7;
 
     walkRoot.rotation.y = rotationY;
 
     idleRoot.rotation.set(1.5, 0, 3);
-    idleRoot.rotateOnWorldAxis(LOCAL_Y, rotationY);
+    idleRoot.rotateOnWorldAxis(LOCAL_Y, rotationY - 0.8);
 
     // ─────────────────────────────────────────────
     // SHARED SMOOTHED SPEED
@@ -433,47 +445,34 @@ export default function CameraRig() {
     };
 
     // ─────────────────────────────────────────────
-    // SECTION FRODO SCENES — boat / tentacle
+    // SECTION FRODO SCENE — boat
     // ─────────────────────────────────────────────
 
-    const updateSectionFrodoScene = (
-      name: "frodo_in_boat" | "frodo_tentacle",
-      visible: boolean,
-      wavyBoat = false,
-    ) => {
-      const obj = scene.getObjectByName(name);
-      if (!obj) return;
-
-      if (!sectionFrodoSceneBase.current[name]) {
-        const authoredAngle = Math.atan2(obj.position.z, obj.position.x);
-        sectionFrodoSceneBase.current[name] = {
-          rotation: obj.rotation.clone(),
+    const frodoInBoat = scene.getObjectByName("frodo_in_boat");
+    if (frodoInBoat) {
+      if (!sectionFrodoSceneBase.current.frodo_in_boat) {
+        const authoredAngle = Math.atan2(frodoInBoat.position.z, frodoInBoat.position.x);
+        sectionFrodoSceneBase.current.frodo_in_boat = {
+          rotation: frodoInBoat.rotation.clone(),
           pathRotation: -authoredAngle + Math.PI * 0.5,
         };
-        sectionFrodoSceneY.current[name] = GOLLUM_Y_HIDDEN;
+        sectionFrodoSceneY.current.frodo_in_boat = GOLLUM_Y_HIDDEN;
       }
 
-      const base = sectionFrodoSceneBase.current[name];
-      const visibleY = name === "frodo_in_boat" ? GOLLUM_Y : CHAR_Y + 1.44;
-      const targetY = visible ? visibleY : GOLLUM_Y_HIDDEN;
+      const base = sectionFrodoSceneBase.current.frodo_in_boat;
+      const targetY = frodoInBoatIsVisible ? GOLLUM_Y : GOLLUM_Y_HIDDEN;
 
-      sectionFrodoSceneY.current[name] +=
-        (targetY - sectionFrodoSceneY.current[name]) * sectionSwapSmoothing;
+      sectionFrodoSceneY.current.frodo_in_boat +=
+        (targetY - sectionFrodoSceneY.current.frodo_in_boat) * sectionSwapSmoothing;
 
-      const sceneRadius =
-        name === "frodo_in_boat" ? BOAT_FRODO_RADIUS : TENTACLE_FRODO_RADIUS;
-      const sceneX = Math.cos(charAngle) * sceneRadius;
-      const sceneZ = Math.sin(charAngle) * sceneRadius;
+      const sceneX = Math.cos(charAngle) * BOAT_FRODO_RADIUS;
+      const sceneZ = Math.sin(charAngle) * BOAT_FRODO_RADIUS;
 
-      obj.position.set(sceneX, sectionFrodoSceneY.current[name], sceneZ);
+      frodoInBoat.position.set(sceneX, sectionFrodoSceneY.current.frodo_in_boat, sceneZ);
+      frodoInBoat.rotation.copy(base.rotation);
+      frodoInBoat.rotateOnWorldAxis(LOCAL_Y, rotationY - base.pathRotation - 0.7);
 
-      // These meshes already have an authored orientation in their own sections.
-      // Reset to that base, then rotate only by the path-facing delta, not the
-      // absolute path rotation — otherwise they get over-rotated.
-      obj.rotation.copy(base.rotation);
-      obj.rotateOnWorldAxis(LOCAL_Y, rotationY - base.pathRotation);
-
-      if (wavyBoat && visible) {
+      if (frodoInBoatIsVisible) {
         const waveT = elapsed * BOAT_WAVE_SPEED;
         const wave = Math.sin(waveT);
         const swell = (1 - Math.cos(waveT)) * 0.5;
@@ -483,21 +482,15 @@ export default function CameraRig() {
           .normalize();
         _pathSide.set(Math.cos(charAngle), 0, Math.sin(charAngle)).normalize();
 
-        // Boat motion in the path's movement plane: bob vertically, drift a
-        // little forward/back along the route, pitch over waves, and roll very
-        // slightly side-to-side around its forward direction.
-        obj.position.y += swell * BOAT_BOB_AMOUNT;
-        obj.position.addScaledVector(_pathForward, wave * BOAT_SURGE_AMOUNT);
-        obj.rotateOnWorldAxis(_pathSide, wave * BOAT_PITCH_AMOUNT);
-        obj.rotateOnWorldAxis(
+        frodoInBoat.position.y += swell * BOAT_BOB_AMOUNT;
+        frodoInBoat.position.addScaledVector(_pathForward, wave * BOAT_SURGE_AMOUNT);
+        frodoInBoat.rotateOnWorldAxis(_pathSide, wave * BOAT_PITCH_AMOUNT);
+        frodoInBoat.rotateOnWorldAxis(
           _pathForward,
           Math.sin(waveT * 0.7) * BOAT_ROLL_AMOUNT,
         );
       }
-    };
-
-    updateSectionFrodoScene("frodo_in_boat", frodoInBoatIsVisible, true);
-    updateSectionFrodoScene("frodo_tentacle", frodoTentacleIsVisible);
+    }
 
     // ─────────────────────────────────────────────
     // NAZGUL CHASE — Mellon
@@ -628,7 +621,7 @@ export default function CameraRig() {
     // reset to the exported/base rotation first, then rotate around WORLD Y.
     // Directly assigning rotation.y makes Gollum spin around his tilted local axis.
     gollumRoot.rotation.copy(gollumBaseRotation.current);
-    gollumRoot.rotateOnWorldAxis(LOCAL_Y, -gollumAngle + Math.PI * 0.5);
+    gollumRoot.rotateOnWorldAxis(LOCAL_Y, -gollumAngle + Math.PI * 0.5 + 0.5);
 
     // ─────────────────────────────────────────────
     // GOLLUM WALK ANIMATION
