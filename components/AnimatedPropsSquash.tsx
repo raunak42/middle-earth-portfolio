@@ -21,7 +21,12 @@ interface PropConfig {
     freqY: number;
   };
   rock?: {
-    rockAngle: number;
+    rockAngle?: number;
+    rockUpAngle?: number;
+    rockDownAngle?: number;
+    rockUpSpeed?: number;
+    rockDownSpeed?: number;
+    rockElasticity?: number;
     bobAmount: number;
     rockAxis: "x" | "y" | "z";
     // Blender axis-report vectors for objects whose local axes are not aligned with Three.js axes.
@@ -115,14 +120,17 @@ const PROP_CONFIGS: Record<string, PropConfig> = {
   //   Blender Z → rockWorldAxis: [-0.8090, -0.0000, -0.5878]
   right_hand: {
     amplitude: 0,
-    speed: 3,
+    speed: 4.5,
     axis: "y",
     rock: {
-      rockAngle: 1,
+      rockUpAngle: 0.65,
+      rockDownAngle: 0.3,
+      rockUpSpeed: 0.4,
+      rockDownSpeed: 1.1,
+      rockElasticity: 2,
       bobAmount: 0,
       rockAxis: "y",                             // fallback, unused when rockWorldAxis is set
       rockWorldAxis: [-0.8090, -0.0000, -0.5878], // ← Blender Z (swap to X or Y above to test)
-      elastic: true,   // slow whip-up, fast snappy return with bounce
     },
   },
 
@@ -412,6 +420,55 @@ function whipWave(t: number): number {
   }
 }
 
+function directionalRockWave(
+  t: number,
+  rock: NonNullable<PropConfig["rock"]>,
+): number {
+  const upSpeed = Math.max(0.001, rock.rockUpSpeed ?? 1);
+  const downSpeed = Math.max(0.001, rock.rockDownSpeed ?? 1);
+  const upDuration = 2 / upSpeed;
+  const downDuration = 2 / downSpeed;
+  const cycleDuration = upDuration + downDuration;
+  const cycleT = ((t % cycleDuration) + cycleDuration) % cycleDuration;
+  const smoothStep = (u: number) => u * u * (3 - 2 * u);
+
+  if (cycleT < upDuration) {
+    return -1 + smoothStep(cycleT / upDuration) * 2;
+  }
+
+  const downU = (cycleT - upDuration) / downDuration;
+  const elasticity = rock.rockElasticity ?? 0;
+
+  if (elasticity <= 0) {
+    return 1 - smoothStep(downU) * 2;
+  }
+
+  const backAmount = 1.70158 * elasticity;
+  const backEase =
+    1 +
+    (backAmount + 1) * (downU - 1) ** 3 +
+    backAmount * (downU - 1) ** 2;
+
+  return 1 - backEase * 2;
+}
+
+function rockWaveForTime(t: number, rock: NonNullable<PropConfig["rock"]>) {
+  if (rock.rockUpSpeed !== undefined || rock.rockDownSpeed !== undefined) {
+    return directionalRockWave(t, rock);
+  }
+
+  return rock.elastic ? whipWave(t) : Math.sin(t);
+}
+
+function rockAngleForWave(wave: number, rock: NonNullable<PropConfig["rock"]>) {
+  const fallbackAngle = rock.rockAngle ?? 0;
+  const range = wave >= 0
+    ? rock.rockUpAngle ?? fallbackAngle
+    : rock.rockDownAngle ?? fallbackAngle;
+
+  return wave * range;
+}
+
 const _worldAxis = new THREE.Vector3();
 const _deltaQ    = new THREE.Quaternion();
 const _baseQ     = new THREE.Quaternion();
@@ -548,9 +605,9 @@ export default function AnimatedPropsSquash() {
 
       // Blender axis-report vector + base quaternion prevents drift on rotated GLB meshes.
       if (config.rock?.rockWorldAxis) {
-        const { rockAngle, bobAmount, rockWorldAxis, elastic } = config.rock;
-        const wave  = elastic ? whipWave(t) : Math.sin(t);
-        const angle = wave * rockAngle;
+        const { bobAmount, rockWorldAxis } = config.rock;
+        const wave = rockWaveForTime(t, config.rock);
+        const angle = rockAngleForWave(wave, config.rock);
 
         _worldAxis.set(...rockWorldAxis).normalize();
         _deltaQ.setFromAxisAngle(_worldAxis, angle);
@@ -562,9 +619,9 @@ export default function AnimatedPropsSquash() {
       }
 
       if (config.rock) {
-        const { rockAngle, bobAmount, rockAxis, elastic } = config.rock;
-        const wave = elastic ? whipWave(t) : Math.sin(t);
-        const angle = wave * rockAngle;
+        const { bobAmount, rockAxis } = config.rock;
+        const wave = rockWaveForTime(t, config.rock);
+        const angle = rockAngleForWave(wave, config.rock);
         obj.rotation.set(
           rockAxis === "x" ? baseRotation.x + angle : baseRotation.x,
           rockAxis === "y" ? baseRotation.y + angle : baseRotation.y,
