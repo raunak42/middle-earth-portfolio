@@ -125,8 +125,8 @@ const PROP_CONFIGS: Record<string, PropConfig> = {
     rock: {
       rockUpAngle: 0.65,
       rockDownAngle: 0.3,
-      rockUpSpeed: 0.4,
-      rockDownSpeed: 1.1,
+      rockUpSpeed: 0.2,
+      rockDownSpeed: 1.4,
       rockElasticity: 2,
       bobAmount: 0,
       rockAxis: "y",                             // fallback, unused when rockWorldAxis is set
