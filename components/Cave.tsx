@@ -19,6 +19,42 @@ export default function Cave() {
   return (
     <>
       <ambientLight intensity={2} color="#d0e8ff" />
+      {/* Raise intensity to brighten the roof underside; keep y below the ceiling. */}
+      <pointLight
+        position={[0, 4.05, 0]}
+        intensity={0.9}
+        distance={20}
+        decay={0.75}
+        color="#fff1d8"
+      />
+      <pointLight
+        position={[-4.2, 4.05, 4.2]}
+        intensity={0.85}
+        distance={12}
+        decay={0.75}
+        color="#fff1d8"
+      />
+      <pointLight
+        position={[4.2, 4.05, 4.2]}
+        intensity={0.85}
+        distance={12}
+        decay={0.75}
+        color="#fff1d8"
+      />
+      <pointLight
+        position={[4.2, 4.05, -4.2]}
+        intensity={0.85}
+        distance={12}
+        decay={0.75}
+        color="#fff1d8"
+      />
+      <pointLight
+        position={[-4.2, 4.05, -4.2]}
+        intensity={0.85}
+        distance={12}
+        decay={0.75}
+        color="#fff1d8"
+      />
       <directionalLight
         position={[-6.59, 0.98, 6.59]}
         intensity={2}
