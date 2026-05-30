@@ -8,7 +8,6 @@ export default function CameraDebug() {
   const divRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
-    // create overlay div
     const div = document.createElement("div");
     div.style.cssText = `
       position: fixed;

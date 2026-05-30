@@ -18,31 +18,25 @@ export default function Cave() {
 
   return (
     <>
-      {/* BASE — warm ground, cool sky — creates natural depth contrast */}
       <ambientLight intensity={2} color="#d0e8ff" />
-      {/* <ambientLight intensity={2} color="#d0e8ff" /> */}
-      {/* SHIRE — ground level, angled toward Shire */}
       <directionalLight
         position={[-6.59, 0.98, 6.59]}
         intensity={2}
         color="#d0e8ff"
       />
 
-      {/* MELLON — ground level, angled toward Mellon */}
       <directionalLight
         position={[6.59, 0.98, 6.59]}
         intensity={3.5}
         color="#d0e8ff"
       />
 
-      {/* ARGONATH — ground level, angled toward Argonath */}
       <directionalLight
         position={[6.59, 0.98, -6.59]}
         intensity={1.5}
         color="#d0e8ff"
       />
 
-      {/* BALROG — ground level, angled toward Balrog */}
       <directionalLight
         position={[-6.59, 0.98, -6.59]}
         intensity={2}

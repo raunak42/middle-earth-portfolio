@@ -4,10 +4,6 @@ import { useEffect, useRef } from "react";
 import { useFrame, useThree } from "@react-three/fiber";
 import * as THREE from "three";
 
-// ─────────────────────────────────────────────────────────────
-// CAMERA
-// ─────────────────────────────────────────────────────────────
-
 const BASE_RADIUS = 6.42;
 const BASE_HEIGHT = 4.21;
 
@@ -16,14 +12,21 @@ const INITIAL_ANGLE = Math.atan2(-5.005, 4.025);
 const SCROLL_SPEED = 0.0008;
 const CAMERA_SMOOTHING = 0.06;
 
-// Roller coaster parameters
-const RADIUS_AMPLITUDE = 2;
-const RADIUS_FREQUENCY = 1.5;
+// Forward/back controls camera distance from the room center independently.
+// Positive radius wave = farther back, negative radius wave = farther forward.
+const BACKWARD_AMPLITUDE = 1;
+const FORWARD_AMPLITUDE = 3;
+const FORWARD_BACK_FREQUENCY = 1.9;
 
-const HEIGHT_AMPLITUDE = 1.0;
-const HEIGHT_FREQUENCY = 2.3;
+// Up/down controls camera height independently.
+// Positive height wave = up, negative height wave = down.
+const UP_AMPLITUDE = 0.5;
+const DOWN_AMPLITUDE = 2.0;
+const UP_DOWN_FREQUENCY = 2.3;
 
-const HEIGHT_OFFSET = 2.5;
+// Adds a smaller secondary vertical wobble. Set to 0 to disable.
+const SECONDARY_UP_DOWN_AMOUNT = 0.3;
+const SECONDARY_UP_DOWN_FREQUENCY_MULTIPLIER = 2.5;
 
 // Camera look target: instead of staring at the world origin, look at the
 // vertical middle of the opposite room wall/section. The GLB section wall
@@ -35,16 +38,8 @@ const WALL_LOOK_AT_RADIUS = Math.sqrt(
 );
 const WALL_LOOK_AT_HEIGHT = 2.5;
 
-// ─────────────────────────────────────────────────────────────
-// MOUSE FOLLOW — INERTIA TUNING
-// ─────────────────────────────────────────────────────────────
-
 const MOUSE_LOOK_SENSITIVITY = 1.7;
 const MOUSE_SMOOTHING = 0.1;
-
-// ─────────────────────────────────────────────────────────────
-// PATH
-// ─────────────────────────────────────────────────────────────
 
 const START_X = 6.5;
 const START_Z = -7.5;
@@ -63,10 +58,6 @@ const CHARACTER_START_ANGLE = Math.atan2(START_Z, START_X);
 
 const CHAR_Y = 3.5;
 
-// ─────────────────────────────────────────────────────────────
-// SWAP ANIMATION (Frodo)
-// ─────────────────────────────────────────────────────────────
-
 const WALK_Y_MOVING = CHAR_Y + 0.5;
 const WALK_Y_STOPPED = CHAR_Y - 1.8;
 const IDLE_Y_MOVING = CHAR_Y - 2;
@@ -74,16 +65,8 @@ const IDLE_Y_STOPPED = CHAR_Y + 0.7;
 
 const SWAP_SMOOTHING = 0.12;
 
-// ─────────────────────────────────────────────────────────────
-// IDLE FLOATING
-// ─────────────────────────────────────────────────────────────
-
 const FLOAT_AMPLITUDE = 0.15;
 const FLOAT_SPEED = 1.5;
-
-// ─────────────────────────────────────────────────────────────
-// WALK ANIMATION (Frodo)
-// ─────────────────────────────────────────────────────────────
 
 const WALK_CYCLE_SPEED = 60;
 const SPEED_SMOOTHING = 0.08;
@@ -98,15 +81,10 @@ const RIGHT_HAND_OFFSET = -1;
 const LEFT_LEG_OFFSET = 0.5;
 const RIGHT_LEG_OFFSET = 0.5;
 
-// ─────────────────────────────────────────────────────────────
-// GOLLUM
-// ─────────────────────────────────────────────────────────────
-
 // Angular distance behind Frodo on the shared circle path.
 // Positive = trails behind in the direction of travel.
 const GOLLUM_FOLLOW_OFFSET = 0.35;
 
-// Gollum sits a little lower than Frodo (crouched posture).
 const GOLLUM_Y = CHAR_Y + 0.5;
 const GOLLUM_Y_HIDDEN = IDLE_Y_MOVING;
 
@@ -134,7 +112,6 @@ const BOAT_PITCH_AMOUNT = 0.04;
 const BOAT_ROLL_AMOUNT = 0.025;
 const BOAT_WAVE_SPEED = 5;
 
-// Slightly faster cadence than Frodo — scurrying, nervous energy.
 const GOLLUM_WALK_CYCLE_SPEED = 80;
 
 const GOLLUM_LEFT_ARM_SWING = 0.7;
@@ -142,7 +119,6 @@ const GOLLUM_RIGHT_ARM_SWING = 0.7;
 const GOLLUM_LEFT_LEG_SWING = 0.7;
 const GOLLUM_RIGHT_LEG_SWING = 0.7;
 
-// Nazgul chase in Mellon — same idea as Gollum in Balrog.
 const NAZGUL_FOLLOW_OFFSET = GOLLUM_FOLLOW_OFFSET;
 const NAZGUL_Y = CHAR_Y + 1.0;
 const NAZGUL_Y_HIDDEN = IDLE_Y_MOVING;
@@ -152,18 +128,10 @@ const NAZGUL_GALLOP_SURGE = 0.05;
 const NAZGUL_GALLOP_PITCH = 0.045;
 const NAZGUL_GALLOP_ROLL = 0.018;
 
-// ─────────────────────────────────────────────────────────────
-// AXIS
-// ─────────────────────────────────────────────────────────────
-
 const LOCAL_Y = new THREE.Vector3(0, 1, 0);
 const TWO_PI = Math.PI * 2;
 const _pathForward = new THREE.Vector3();
 const _pathSide = new THREE.Vector3();
-
-// ─────────────────────────────────────────────────────────────
-// BONE LISTS
-// ─────────────────────────────────────────────────────────────
 
 const FRODO_BONE_NAMES = [
   "frodo_left_hand",
@@ -186,10 +154,6 @@ type SectionFrodoSceneBase = {
   rotation: THREE.Euler;
   pathRotation: number;
 };
-
-// ─────────────────────────────────────────────────────────────
-// COMPONENT
-// ─────────────────────────────────────────────────────────────
 
 export default function CameraRig({
   disabled = false,
@@ -221,18 +185,12 @@ export default function CameraRig({
   );
   const sectionFrodoSceneY = useRef<Record<string, number>>({});
 
-  // Mouse state
   const mouseX = useRef(0);
   const mouseY = useRef(0);
   const smoothMouseX = useRef(0);
   const smoothMouseY = useRef(0);
 
-  // Shared smoothed speed — both characters react to the same scroll input.
   const smoothedSpeed = useRef(0);
-
-  // ─────────────────────────────────────────────
-  // REST POSE CAPTURE — Frodo + Gollum
-  // ─────────────────────────────────────────────
 
   useEffect(() => {
     const tryCapture = () => {
@@ -257,10 +215,6 @@ export default function CameraRig({
     }
   }, [get]);
 
-  // ─────────────────────────────────────────────
-  // SCROLL
-  // ─────────────────────────────────────────────
-
   useEffect(() => {
     if (disabled) return;
 
@@ -271,10 +225,6 @@ export default function CameraRig({
     window.addEventListener("wheel", onWheel, { passive: false });
     return () => window.removeEventListener("wheel", onWheel);
   }, [disabled]);
-
-  // ─────────────────────────────────────────────
-  // MOUSE LISTENER
-  // ─────────────────────────────────────────────
 
   useEffect(() => {
     if (disabled) {
@@ -291,46 +241,39 @@ export default function CameraRig({
     return () => window.removeEventListener("mousemove", onMouseMove);
   }, [disabled]);
 
-  // ─────────────────────────────────────────────
-  // FRAME LOOP
-  // ─────────────────────────────────────────────
-
   useFrame((state, delta) => {
     const { camera, scene } = get();
     const elapsed = state.clock.elapsedTime;
-
-    // ─────────────────────────────────────────────
-    // CAMERA (ROLLER COASTER STYLE)
-    // ─────────────────────────────────────────────
 
     currentAngle.current +=
       (targetAngle.current - currentAngle.current) * CAMERA_SMOOTHING;
 
     smoothZoom.current += (zoom - smoothZoom.current) * 0.08;
 
-    const radiusWave = Math.sin(currentAngle.current * RADIUS_FREQUENCY);
+    const radiusWave = Math.sin(currentAngle.current * FORWARD_BACK_FREQUENCY);
+    const radiusOffset =
+      Math.max(radiusWave, 0) * BACKWARD_AMPLITUDE -
+      Math.max(-radiusWave, 0) * FORWARD_AMPLITUDE;
     const dynamicRadius =
-      (BASE_RADIUS + radiusWave * RADIUS_AMPLITUDE) *
-      (1 - smoothZoom.current * 0.84);
+      (BASE_RADIUS + radiusOffset) * (1 - smoothZoom.current * 0.84);
 
-    const heightWave1 = Math.sin(currentAngle.current * HEIGHT_FREQUENCY);
-    const heightWave2 = Math.cos(
-      currentAngle.current * HEIGHT_FREQUENCY * HEIGHT_OFFSET,
+    const heightWave = Math.sin(currentAngle.current * UP_DOWN_FREQUENCY);
+    const secondaryHeightWave = Math.cos(
+      currentAngle.current *
+        UP_DOWN_FREQUENCY *
+        SECONDARY_UP_DOWN_FREQUENCY_MULTIPLIER,
     );
-    const dynamicHeight =
-      BASE_HEIGHT +
-      heightWave1 * HEIGHT_AMPLITUDE +
-      heightWave2 * (HEIGHT_AMPLITUDE * 0.3);
+    const heightOffset =
+      Math.max(heightWave, 0) * UP_AMPLITUDE -
+      Math.max(-heightWave, 0) * DOWN_AMPLITUDE +
+      secondaryHeightWave * SECONDARY_UP_DOWN_AMOUNT;
+    const dynamicHeight = BASE_HEIGHT + heightOffset;
 
     const basePos = new THREE.Vector3(
       Math.sin(currentAngle.current) * dynamicRadius,
       dynamicHeight,
       Math.cos(currentAngle.current) * dynamicRadius,
     );
-
-    // ─────────────────────────────────────────────
-    // MOUSE OFFSET (INERTIAL LAG)
-    // ─────────────────────────────────────────────
 
     smoothMouseX.current +=
       (mouseX.current - smoothMouseX.current) * MOUSE_SMOOTHING;
@@ -356,10 +299,6 @@ export default function CameraRig({
     camera.position.copy(basePos);
     camera.lookAt(target.clone().add(lookOffset));
 
-    // ─────────────────────────────────────────────
-    // FRODO ROOTS
-    // ─────────────────────────────────────────────
-
     const walkRoot = scene.getObjectByName("character_walk_root");
     const idleRoot = scene.getObjectByName("character_idle_root");
 
@@ -372,16 +311,8 @@ export default function CameraRig({
     const x = Math.cos(charAngle) * FRODO_RADIUS;
     const z = Math.sin(charAngle) * FRODO_RADIUS;
 
-    // ─────────────────────────────────────────────
-    // MOVEMENT SPEED
-    // ─────────────────────────────────────────────
-
     const movementSpeed = Math.abs(targetAngle.current - currentAngle.current);
     const isMoving = movementSpeed > 0.00001;
-
-    // ─────────────────────────────────────────────
-    // ANIMATED Y POSITIONS (Frodo swap)
-    // ─────────────────────────────────────────────
 
     const frodoInBoatIsVisible =
       normalizedCharAngle > ARGONATH_COME_UP_AT &&
@@ -403,10 +334,6 @@ export default function CameraRig({
     walkY.current += (targetWalkY - walkY.current) * sectionSwapSmoothing;
     idleY.current += (targetIdleY - idleY.current) * SWAP_SMOOTHING;
 
-    // ─────────────────────────────────────────────
-    // IDLE FLOATING
-    // ─────────────────────────────────────────────
-
     floatTime.current += delta * FLOAT_SPEED;
     const floatOffset = Math.sin(floatTime.current) * FLOAT_AMPLITUDE;
 
@@ -420,20 +347,12 @@ export default function CameraRig({
     idleRoot.rotation.set(1.5, 0, 3);
     idleRoot.rotateOnWorldAxis(LOCAL_Y, rotationY - 0.8);
 
-    // ─────────────────────────────────────────────
-    // SHARED SMOOTHED SPEED
-    // ─────────────────────────────────────────────
-
     if (isMoving) {
       smoothedSpeed.current +=
         (movementSpeed - smoothedSpeed.current) * SPEED_SMOOTHING;
     } else {
       smoothedSpeed.current = 0;
     }
-
-    // ─────────────────────────────────────────────
-    // SWING HELPER
-    // ─────────────────────────────────────────────
 
     const applySwing = (name: string, amount: number) => {
       const obj = scene.getObjectByName(name);
@@ -443,10 +362,6 @@ export default function CameraRig({
       const q = new THREE.Quaternion().setFromAxisAngle(LOCAL_Y, amount);
       obj.quaternion.multiply(q);
     };
-
-    // ─────────────────────────────────────────────
-    // SECTION FRODO SCENE — boat
-    // ─────────────────────────────────────────────
 
     const frodoInBoat = scene.getObjectByName("frodo_in_boat");
     if (frodoInBoat) {
@@ -491,10 +406,6 @@ export default function CameraRig({
         );
       }
     }
-
-    // ─────────────────────────────────────────────
-    // NAZGUL CHASE — Mellon
-    // ─────────────────────────────────────────────
 
     const nazgulRoot = scene.getObjectByName("nazgul");
     if (nazgulRoot) {
@@ -543,9 +454,6 @@ export default function CameraRig({
           .set(Math.cos(nazgulAngle), 0, Math.sin(nazgulAngle))
           .normalize();
 
-        // Single-mesh gallop illusion in the plane of motion: hoof-beat bounce,
-        // tiny forward surge along the path, pitch around the path-side axis,
-        // and a very small roll around the forward axis.
         nazgulRoot.position.y += hoofBeat * NAZGUL_GALLOP_BOB;
         nazgulRoot.position.addScaledVector(
           _pathForward,
@@ -558,10 +466,6 @@ export default function CameraRig({
         );
       }
     }
-
-    // ─────────────────────────────────────────────
-    // FRODO WALK ANIMATION
-    // ─────────────────────────────────────────────
 
     if (smoothedSpeed.current > 0.00001) {
       walkTime.current += delta * smoothedSpeed.current * WALK_CYCLE_SPEED;
@@ -589,14 +493,9 @@ export default function CameraRig({
       }
     }
 
-    // ─────────────────────────────────────────────
-    // GOLLUM POSITION
-    // ─────────────────────────────────────────────
-
     const gollumRoot = scene.getObjectByName("gollum_body");
     if (!gollumRoot) return;
 
-    // Trail behind Frodo by a fixed angular offset on the same circle.
     const gollumAngle = charAngle - GOLLUM_FOLLOW_OFFSET;
     const gx = Math.cos(gollumAngle) * GOLLUM_RADIUS;
     const gz = Math.sin(gollumAngle) * GOLLUM_RADIUS;
@@ -622,10 +521,6 @@ export default function CameraRig({
     // Directly assigning rotation.y makes Gollum spin around his tilted local axis.
     gollumRoot.rotation.copy(gollumBaseRotation.current);
     gollumRoot.rotateOnWorldAxis(LOCAL_Y, -gollumAngle + Math.PI * 0.5 + 0.5);
-
-    // ─────────────────────────────────────────────
-    // GOLLUM WALK ANIMATION
-    // ─────────────────────────────────────────────
 
     if (smoothedSpeed.current > 0.00001) {
       gollumWalkTime.current +=
