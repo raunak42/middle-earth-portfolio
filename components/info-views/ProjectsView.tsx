@@ -1,13 +1,12 @@
 "use client";
 
-import { useRef, useState, type WheelEvent } from "react";
+import { useState } from "react";
 
 interface Project {
   id: string;
   title: string;
   description: string;
-  tech: string[];
-  year: string;
+  previewImage: string;
 }
 
 const PROJECTS: Project[] = [
@@ -15,214 +14,173 @@ const PROJECTS: Project[] = [
     id: "1",
     title: "Immersive Gallery",
     description:
-      "WebGL-powered 3D art gallery with physics-based interactions and dynamic lighting",
-    tech: ["Three.js", "React", "GLSL"],
-    year: "2024",
+      "WebGL-powered 3D art gallery with physics-based interactions and dynamic lighting.",
+    previewImage: "/green.webp",
   },
   {
     id: "2",
     title: "Motion Design System",
     description:
-      "Comprehensive animation library with 60fps spring physics and gesture controls",
-    tech: ["Framer Motion", "TypeScript", "Storybook"],
-    year: "2024",
+      "A reusable animation kit with spring motion, gestures, and small delightful details.",
+    previewImage: "/orange.webp",
   },
   {
     id: "3",
-    title: "Data Visualization Platform",
+    title: "Data Platform",
     description:
-      "Real-time analytics dashboard with custom WebGL charts and interactive filters",
-    tech: ["D3.js", "WebGL", "Node.js"],
-    year: "2023",
+      "Realtime dashboards with custom visualizations and interactive filters.",
+    previewImage: "/blue.webp",
   },
   {
     id: "4",
-    title: "Generative Art Tool",
+    title: "Generative Tool",
     description:
-      "Browser-based creative coding environment with shader editor and export pipeline",
-    tech: ["Canvas API", "WebGPU", "React"],
-    year: "2023",
-  },
-  {
-    id: "5",
-    title: "E-commerce Experience",
-    description:
-      "Product configurator with AR preview and smooth micro-interactions",
-    tech: ["Next.js", "Three.js", "Tailwind"],
-    year: "2023",
+      "A browser creative-coding playground with shader controls and exports.",
+    previewImage: "/white.webp",
   },
 ];
 
-function wrapPosition(position: number) {
-  return ((position % PROJECTS.length) + PROJECTS.length) % PROJECTS.length;
+function GitHubIcon() {
+  return (
+    <svg
+      className="h-[1.25em] w-[1.25em]"
+      viewBox="0 0 24 24"
+      fill="currentColor"
+      aria-hidden="true"
+    >
+      <path d="M12 2C6.48 2 2 6.6 2 12.26c0 4.53 2.86 8.37 6.84 9.73.5.1.68-.22.68-.49 0-.24-.01-1.04-.02-1.9-2.78.62-3.37-1.22-3.37-1.22-.45-1.18-1.11-1.5-1.11-1.5-.91-.64.07-.63.07-.63 1 .08 1.53 1.07 1.53 1.07.9 1.56 2.35 1.1 2.92.84.09-.67.35-1.1.63-1.36-2.22-.26-4.56-1.14-4.56-5.07 0-1.12.39-2.04 1.03-2.76-.1-.26-.45-1.31.1-2.72 0 0 .84-.28 2.75 1.05A9.3 9.3 0 0 1 12 6.96c.85 0 1.7.12 2.5.34 1.9-1.33 2.74-1.05 2.74-1.05.55 1.41.2 2.46.1 2.72.64.72 1.03 1.64 1.03 2.76 0 3.94-2.34 4.8-4.57 5.06.36.32.68.94.68 1.9 0 1.36-.02 2.46-.02 2.8 0 .27.18.59.69.49A10.25 10.25 0 0 0 22 12.26C22 6.6 17.52 2 12 2Z" />
+    </svg>
+  );
 }
 
-function getWheelOffset(index: number, position: number) {
-  let offset = index - position;
-  const half = PROJECTS.length / 2;
-
-  if (offset > half) offset -= PROJECTS.length;
-  if (offset < -half) offset += PROJECTS.length;
-
-  return offset;
+function GoToIcon() {
+  return (
+    <svg
+      className="h-[1.25em] w-[1.25em]"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth="2.6"
+      aria-hidden="true"
+    >
+      <path d="M8 6h10v10" />
+      <path d="M18 6 6 18" />
+      <path d="M5 9v10h10" />
+    </svg>
+  );
 }
+
+const PROJECT_PAGES = Array.from(
+  { length: Math.ceil(PROJECTS.length / 2) },
+  (_, index) => PROJECTS.slice(index * 2, index * 2 + 2),
+);
 
 export default function ProjectsView() {
-  const [wheelPosition, setWheelPosition] = useState(1);
-  const wheelLockUntil = useRef(0);
-  const activeIndex = Math.round(wrapPosition(wheelPosition)) % PROJECTS.length;
+  const [activePage, setActivePage] = useState(0);
 
   const moveBy = (amount: number) => {
-    setWheelPosition((prev) => wrapPosition(prev + amount));
-  };
-
-  const handleWheel = (event: WheelEvent<HTMLDivElement>) => {
-    event.preventDefault();
-    event.stopPropagation();
-
-    const now = performance.now();
-    if (now < wheelLockUntil.current) return;
-
-    const delta =
-      Math.abs(event.deltaY) >= Math.abs(event.deltaX)
-        ? event.deltaY
-        : event.deltaX;
-
-    if (Math.abs(delta) < 18) return;
-
-    wheelLockUntil.current = now + 520;
-    moveBy(delta > 0 ? 1 : -1);
+    setActivePage(
+      (currentPage) =>
+        (currentPage + amount + PROJECT_PAGES.length) % PROJECT_PAGES.length,
+    );
   };
 
   return (
-    <div className="pointer-events-none absolute inset-0">
-      <div
-        className="pointer-events-auto absolute bottom-[19.1vh] right-[8vw] top-[25vh] w-[min(32vw,590px)]"
-        onWheel={handleWheel}
-      >
-        <div className="relative h-full overflow-hidden [mask-image:linear-gradient(to_bottom,transparent_0%,rgba(0,0,0,0.2)_7%,black_19%,black_81%,rgba(0,0,0,0.2)_93%,transparent_100%)] [perspective:1300px]">
-          <div className="absolute inset-0 [transform-style:preserve-3d]">
-            {PROJECTS.map((project, index) => {
-              const offset = getWheelOffset(index, wheelPosition);
-              const absOffset = Math.abs(offset);
-              const wheelAngle = offset * 42;
-              const wheelAngleRad = (wheelAngle * Math.PI) / 180;
-              const y = Math.sin(wheelAngleRad) * 255;
-              const z = (Math.cos(wheelAngleRad) - 1) * 260;
-              const rotateX = -wheelAngle * 0.72;
-              const opacity = Math.max(0, 1 - absOffset * 0.28);
-              const scale = Math.max(0.72, 1 - absOffset * 0.075);
-              const isActive = absOffset < 0.45;
-
-              return (
-                <div
+    <div className="flex h-full min-h-[330px] flex-col overflow-hidden pr-1 md:min-h-0">
+      <div className="min-h-0 flex-1 overflow-hidden rounded-[18px]">
+        <div
+          className="flex h-full transition-transform duration-500 ease-[cubic-bezier(0.76,0,0.24,1)]"
+          style={{ transform: `translateX(-${activePage * 100}%)` }}
+        >
+          {PROJECT_PAGES.map((pageProjects, pageIndex) => (
+            <div
+              key={pageIndex}
+              className="flex min-w-full flex-col justify-center gap-3 md:gap-4"
+            >
+              {pageProjects.map((project, projectIndex) => (
+                <article
                   key={project.id}
-                  className="absolute left-0 right-0 top-1/2 cursor-pointer transition-[opacity,transform,filter] duration-300 ease-out"
-                  style={{
-                    filter: `blur(${Math.max(0, absOffset - 1.25) * 0.45}px)`,
-                    opacity,
-                    pointerEvents: opacity > 0.22 ? "auto" : "none",
-                    transform: `translateY(calc(-50% + ${y}px)) translateZ(${z}px) rotateX(${rotateX}deg) scale(${scale})`,
-                    transformOrigin: "center center",
-                    zIndex: 100 - Math.round(absOffset * 10),
-                  }}
-                  onClick={() => setWheelPosition(index)}
+                  className={`flex min-h-[132px] items-center gap-3 rounded-[16px] border-2 border-dashed border-[#2f2a23]/70 bg-[#fff8e8]/42 p-3 shadow-[3px_4px_0_rgba(39,32,24,0.08)] backdrop-blur-[1px] md:min-h-[150px] md:gap-5 md:rounded-[18px] md:border-[3px] md:p-4 ${
+                    projectIndex % 2 === 0
+                      ? "rotate-[-0.12deg]"
+                      : "rotate-[0.12deg]"
+                  }`}
                 >
                   <div
-                    className={`rounded-2xl border-2 border-dashed p-5 backdrop-blur-sm transition-all duration-300 ${
-                      isActive
-                        ? "border-white/50 bg-white/13 shadow-[0_14px_42px_rgba(0,0,0,0.18)]"
-                        : "border-white/18 bg-white/6"
-                    }`}
-                  >
-                    <div className="mb-2 flex items-baseline justify-between">
-                      <h3 className="text-[clamp(18px,1.35vw,25px)] font-bold leading-tight">
+                    className="aspect-[16/9] w-[36%] shrink-0 rounded-[12px] border-2 border-dashed border-[#2f2a23]/45 bg-cover bg-center md:w-[42%]"
+                    style={{ backgroundImage: `url(${project.previewImage})` }}
+                  />
+
+                  <div className="flex min-w-0 flex-1 flex-col self-stretch py-1">
+                    <div className="flex items-start justify-between gap-3 md:gap-4">
+                      <h3 className="m-0 text-[clamp(17px,5vw,23px)] font-black leading-[1.05] text-[#221f1a] md:text-[clamp(20px,1.55vw,30px)]">
                         {project.title}
                       </h3>
-                      <span className="text-[clamp(12px,0.9vw,16px)] opacity-70">
-                        {project.year}
-                      </span>
+
+                      <div className="flex shrink-0 items-center gap-2 text-[clamp(17px,4.4vw,22px)] text-[#221f1a] md:gap-3 md:text-[clamp(18px,1.25vw,25px)]">
+                        <button
+                          className="cursor-pointer border-0 bg-transparent p-0 text-current transition-transform hover:scale-110"
+                          aria-label={`${project.title} GitHub`}
+                        >
+                          <GitHubIcon />
+                        </button>
+                        <button
+                          className="cursor-pointer border-0 bg-transparent p-0 text-current transition-transform hover:scale-110"
+                          aria-label={`Open ${project.title}`}
+                        >
+                          <GoToIcon />
+                        </button>
+                      </div>
                     </div>
-                    <p className="mb-3 text-[clamp(13px,0.95vw,16px)] leading-relaxed opacity-90">
+
+                    <p className="mb-0 mt-2 text-[clamp(12px,3.6vw,15px)] font-bold leading-[1.3] text-[#3b362e] md:mt-3 md:text-[clamp(13px,0.9vw,16px)] md:leading-[1.35]">
                       {project.description}
                     </p>
-                    <div className="flex flex-wrap gap-2">
-                      {project.tech.map((tech) => (
-                        <span
-                          key={tech}
-                          className="rounded-full bg-white/15 px-3 py-1 text-[clamp(11px,0.8vw,14px)] font-medium"
-                        >
-                          {tech}
-                        </span>
-                      ))}
-                    </div>
                   </div>
-                </div>
-              );
-            })}
-          </div>
+                </article>
+              ))}
+            </div>
+          ))}
         </div>
+      </div>
 
-        <div className="absolute left-0 right-0 top-[calc(100%+0.25rem)] flex items-center justify-center gap-4">
-          <button
-            onClick={() => moveBy(-1)}
-            className="flex h-10 w-10 items-center justify-center rounded-full border-2 border-dashed border-white/30 bg-white/10 backdrop-blur-sm transition-all hover:border-white/50 hover:bg-white/20"
-            aria-label="Previous project"
-          >
-            <svg
-              width="12"
-              height="12"
-              viewBox="0 0 12 12"
-              fill="none"
-              className="translate-x-[-1px]"
-            >
-              <path
-                d="M7.5 2L3.5 6L7.5 10"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
-          </button>
+      <div className="mt-3 flex shrink-0 items-center justify-center gap-3 text-[#221f1a] md:mt-5 md:gap-4">
+        <button
+          className="cursor-pointer rounded-full border-2 border-dashed border-[#2f2a23]/65 bg-transparent px-3 py-1.5 text-[14px] font-black transition-colors hover:bg-[#2f2a23]/8 [font:inherit] md:px-4 md:py-2 md:text-[16px]"
+          onClick={() => moveBy(-1)}
+          aria-label="Previous project"
+        >
+          ←
+        </button>
 
-          <div className="flex gap-2">
-            {PROJECTS.map((_, index) => (
+        <div className="flex items-center justify-center gap-2.5">
+          {PROJECT_PAGES.map((_, index) => {
+            const active = index === activePage;
+
+            return (
               <button
                 key={index}
-                onClick={() => setWheelPosition(index)}
-                className={`h-2 rounded-full transition-all ${
-                  index === activeIndex
-                    ? "w-8 bg-white"
-                    : "w-2 bg-white/30 hover:bg-white/50"
+                className={`h-3 w-3 cursor-pointer rounded-full border-2 border-dashed transition-colors [font:inherit] ${
+                  active
+                    ? "border-[#4c9a47] bg-[#4c9a47]/65"
+                    : "border-[#2f2a23]/45 bg-transparent hover:border-[#2f2a23]/75"
                 }`}
-                aria-label={`Go to project ${index + 1}`}
+                onClick={() => setActivePage(index)}
+                aria-label={`Go to project page ${index + 1}`}
               />
-            ))}
-          </div>
-
-          <button
-            onClick={() => moveBy(1)}
-            className="flex h-10 w-10 items-center justify-center rounded-full border-2 border-dashed border-white/30 bg-white/10 backdrop-blur-sm transition-all hover:border-white/50 hover:bg-white/20"
-            aria-label="Next project"
-          >
-            <svg
-              width="12"
-              height="12"
-              viewBox="0 0 12 12"
-              fill="none"
-              className="translate-x-[1px]"
-            >
-              <path
-                d="M4.5 2L8.5 6L4.5 10"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
-          </button>
+            );
+          })}
         </div>
+
+        <button
+          className="cursor-pointer rounded-full border-2 border-dashed border-[#2f2a23]/65 bg-transparent px-3 py-1.5 text-[14px] font-black transition-colors hover:bg-[#2f2a23]/8 [font:inherit] md:px-4 md:py-2 md:text-[16px]"
+          onClick={() => moveBy(1)}
+          aria-label="Next project"
+        >
+          →
+        </button>
       </div>
     </div>
   );
