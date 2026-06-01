@@ -22,20 +22,20 @@ export default function ScenePanel({
 }) {
   return (
     <Canvas
-        className="!h-full !w-full !block"
-        shadows
-        camera={{ position: [0, 0.15, 0.5], fov: 60, near: 0.001, far: 100 }}
-        gl={{
-          antialias: true,
-          toneMapping: THREE.CustomToneMapping,
-          toneMappingExposure: 1.2,
-        }}
-      >
-        <Cave />
-        <CameraRig disabled={controlsDisabled} zoom={zoom} />
-        <AnimatedPropsSquash />
-        <CanvasTransitionResizeSync />
-        <SceneClickHandler disabled={controlsDisabled} onViewClick={onViewClick} />
+      className="!h-full !w-full !block"
+      shadows
+      camera={{ position: [0, 0.15, 0.5], fov: 60, near: 0.001, far: 100 }}
+      gl={{
+        antialias: true,
+        toneMapping: THREE.CustomToneMapping,
+        toneMappingExposure: 1.2,
+      }}
+    >
+      <Cave />
+      <CameraRig disabled={controlsDisabled} zoom={zoom} />
+      <AnimatedPropsSquash />
+      <CanvasTransitionResizeSync />
+      <SceneClickHandler disabled={controlsDisabled} onViewClick={onViewClick} />
     </Canvas>
   );
 }
