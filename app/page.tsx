@@ -23,20 +23,24 @@ export default function HomePage() {
         onViewChange={setInfoView}
       />
 
-      <div
-        className={`absolute z-[3] overflow-hidden transform-gpu transition-[inset,border-radius,box-shadow,opacity] duration-[650ms] ease-[cubic-bezier(0.76,0,0.24,1)] after:content-[''] after:absolute after:inset-0 after:z-[2] after:pointer-events-none after:border-dashed after:border-white/95 after:opacity-100 after:transition-[border-width,border-radius] after:duration-[650ms] after:ease-[cubic-bezier(0.76,0,0.24,1)] ${
-          loading ? "pointer-events-none opacity-0" : "opacity-100"
-        } ${
-          infoOpen
-            ? "inset-[25vh_42.5vw_19.1vh_6.5vw] rounded-[16px] shadow-[0_24px_80px_rgba(55,23,17,0.22)] after:border-[4px] after:rounded-[16px]"
-            : "inset-0 rounded-none shadow-none after:border-[6px] after:rounded-none"
-        }`}
-      >
-        <ScenePanel
-          controlsDisabled={infoOpen}
-          zoom={zoom}
-          onViewClick={setInfoView}
-        />
+      <div className="pointer-events-none absolute inset-0 z-[3] flex justify-center md:block">
+        <div
+          className={`relative overflow-visible transform-gpu transition-[width,height,margin,border-radius,box-shadow,opacity] duration-[650ms] ease-[cubic-bezier(0.76,0,0.24,1)] after:content-[''] after:absolute after:z-[2] after:pointer-events-none after:border-dashed after:opacity-100 after:transition-[border-width,border-radius,inset] after:duration-[650ms] after:ease-[cubic-bezier(0.76,0,0.24,1)] ${
+            loading ? "pointer-events-none opacity-0" : "pointer-events-auto opacity-100"
+          } ${
+            infoOpen
+              ? "mt-[16vh] h-[36vh] w-[min(58vw,280px)] min-w-[210px] rounded-[18px] shadow-[0_24px_80px_rgba(55,23,17,0.22)] after:inset-[-3px] after:border-[3px] after:border-[#24211d] after:rounded-[21px] md:ml-[11.6vw] md:mt-[27vh] md:h-[40.24vh] md:w-[36.56vw] md:min-w-0 md:rounded-[16px] md:after:inset-[-4px] md:after:border-[4px] md:after:rounded-[20px]"
+              : "m-0 h-full w-full rounded-none shadow-none after:inset-0 after:border-[6px] after:border-white/95 after:rounded-none"
+          }`}
+        >
+          <div className="absolute inset-0 overflow-hidden rounded-[inherit]">
+            <ScenePanel
+              controlsDisabled={infoOpen}
+              zoom={zoom}
+              onViewClick={setInfoView}
+            />
+          </div>
+        </div>
       </div>
 
       <ZoomControl
