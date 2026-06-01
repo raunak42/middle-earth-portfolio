@@ -13,6 +13,60 @@ body {
   box-sizing: border-box;
 }
 
+div:has(> div > div > span[style*="tabular-nums"]) {
+  overflow: hidden;
+  background: #000000 !important;
+}
+
+div:has(> div > div > span[style*="tabular-nums"])::before {
+  content: "";
+  position: absolute;
+  inset: -28px;
+  z-index: 0;
+  background-image: url("/bgggg.png");
+  background-position: center;
+  background-size: cover;
+  opacity: 0.95;
+  filter: blur(4px) saturate(0.6);
+  transform: scale(1.05);
+}
+
+div:has(> div > div > span[style*="tabular-nums"]) > div {
+  position: relative;
+  z-index: 1;
+}
+
+div:has(> div > div > span[style*="tabular-nums"]) > div::before {
+  content: "";
+  position: absolute;
+  inset: -64px;
+  z-index: -1;
+  border-radius: 9999px;
+  background: radial-gradient(
+    ellipse at center,
+    rgba(248, 223, 180, 0.82) 0%,
+    rgba(248, 223, 180, 0.56) 32%,
+    rgba(248, 223, 180, 0.26) 62%,
+    transparent 100%
+  );
+  filter: blur(30px);
+}
+
+div:has(> div > div > span[style*="tabular-nums"]) > div::after {
+  content: "";
+  position: absolute;
+  inset: -36px;
+  z-index: -1;
+  border-radius: 9999px;
+  background: radial-gradient(
+    ellipse at center,
+    rgba(255, 241, 210, 0.38) 0%,
+    rgba(255, 241, 210, 0.14) 55%,
+    transparent 100%
+  );
+  filter: blur(14px);
+}
+
 .zoom-slider {
   display: block;
   height: 20px;
