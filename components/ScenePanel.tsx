@@ -6,7 +6,6 @@ import { Canvas } from "@react-three/fiber";
 import * as THREE from "three";
 import AnimatedPropsSquash from "@/components/AnimatedPropsSquash";
 import CameraRig from "@/components/CameraRig";
-import CanvasTransitionResizeSync from "@/components/CanvasTransitionResizeSync";
 import Cave from "@/components/Cave";
 import SceneClickHandler from "@/components/SceneClickHandler";
 import { type InfoViewName } from "@/components/InfoView";
@@ -34,7 +33,6 @@ export default function ScenePanel({
       <Cave />
       <CameraRig disabled={controlsDisabled} zoom={zoom} />
       <AnimatedPropsSquash />
-      <CanvasTransitionResizeSync />
       <SceneClickHandler disabled={controlsDisabled} onViewClick={onViewClick} />
     </Canvas>
   );
