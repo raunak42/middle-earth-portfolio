@@ -1,11 +1,13 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useProgress } from "@react-three/drei";
 import AppLoader from "@/components/AppLoader";
 import InfoView, { type InfoViewName } from "@/components/InfoView";
 import ScenePanel from "@/components/ScenePanel";
 import ZoomControl from "@/components/ZoomControl";
+
+const SCENE_PANEL_TRANSITION_MS = 700;
 
 type ScenePanelMetrics = {
   frameWidth: number;
@@ -66,12 +68,38 @@ function useScenePanelMetrics() {
 
 export default function HomePage() {
   const [infoView, setInfoView] = useState<InfoViewName | null>(null);
+  const [visibleInfoView, setVisibleInfoView] = useState<InfoViewName | null>(
+    null,
+  );
   const [zoom, setZoom] = useState(0);
+  const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const { active, progress } = useProgress();
   const sceneMetrics = useScenePanelMetrics();
 
   const infoOpen = infoView !== null;
   const loading = active || progress < 100;
+
+  useEffect(() => {
+    return () => {
+      if (closeTimerRef.current) clearTimeout(closeTimerRef.current);
+    };
+  }, []);
+
+  const openInfoView = (view: InfoViewName) => {
+    if (closeTimerRef.current) clearTimeout(closeTimerRef.current);
+    closeTimerRef.current = null;
+    setVisibleInfoView(view);
+    setInfoView(view);
+  };
+
+  const closeInfoView = () => {
+    if (closeTimerRef.current) clearTimeout(closeTimerRef.current);
+    setInfoView(null);
+    closeTimerRef.current = setTimeout(() => {
+      setVisibleInfoView(null);
+      closeTimerRef.current = null;
+    }, SCENE_PANEL_TRANSITION_MS);
+  };
 
   const sceneTransformStyle = useMemo(() => {
     if (!infoOpen || !sceneMetrics) {
@@ -121,9 +149,9 @@ export default function HomePage() {
   return (
     <div className="relative h-screen w-screen overflow-hidden">
       <InfoView
-        view={infoView}
-        onClose={() => setInfoView(null)}
-        onViewChange={setInfoView}
+        view={visibleInfoView}
+        onClose={closeInfoView}
+        onViewChange={openInfoView}
       />
 
       <div
@@ -140,7 +168,7 @@ export default function HomePage() {
         <ScenePanel
           controlsDisabled={infoOpen}
           zoom={zoom}
-          onViewClick={setInfoView}
+          onViewClick={openInfoView}
         />
       </div>
 
