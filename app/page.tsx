@@ -126,23 +126,29 @@ export default function HomePage() {
         borderColor: "rgba(255, 255, 255, 0.95)",
         borderRadius: 0,
         borderWidth: 6,
-        height: sceneMetrics?.viewportHeight ?? "100vh",
-        left: 0,
-        top: 0,
-        width: sceneMetrics?.viewportWidth ?? "100vw",
+        inset: 0,
       };
     }
 
+    const scaleX = sceneMetrics.width / sceneMetrics.viewportWidth;
+    const scaleY = sceneMetrics.height / sceneMetrics.viewportHeight;
     const frameWidth = sceneMetrics.frameWidth;
+    const frameX = frameWidth / scaleX;
+    const frameY = frameWidth / scaleY;
 
     return {
+      borderBottomWidth: frameY,
       borderColor: "#24211d",
-      borderRadius: sceneMetrics.radius + frameWidth,
-      borderWidth: frameWidth,
-      height: sceneMetrics.height + frameWidth * 2,
-      left: sceneMetrics.x - frameWidth,
-      top: sceneMetrics.y - frameWidth,
-      width: sceneMetrics.width + frameWidth * 2,
+      borderLeftWidth: frameX,
+      borderRadius: `${(sceneMetrics.radius + frameWidth) / scaleX}px / ${
+        (sceneMetrics.radius + frameWidth) / scaleY
+      }px`,
+      borderRightWidth: frameX,
+      borderTopWidth: frameY,
+      bottom: -frameY,
+      left: -frameX,
+      right: -frameX,
+      top: -frameY,
     };
   }, [infoOpen, sceneMetrics]);
 
@@ -155,7 +161,7 @@ export default function HomePage() {
       />
 
       <div
-        className={`absolute inset-0 z-[3] transform-gpu overflow-hidden shadow-none transition-[transform,border-radius,box-shadow,opacity] duration-[700ms] ease-[cubic-bezier(0.76,0,0.24,1)] will-change-transform ${
+        className={`absolute inset-0 z-[3] transform-gpu overflow-visible shadow-none transition-[transform,border-radius,box-shadow,opacity] duration-[700ms] ease-[cubic-bezier(0.76,0,0.24,1)] will-change-transform ${
           loading
             ? "pointer-events-none opacity-0"
             : "pointer-events-auto opacity-100"
@@ -165,20 +171,20 @@ export default function HomePage() {
           transformOrigin: "top left",
         }}
       >
-        <ScenePanel
-          controlsDisabled={infoOpen}
-          zoom={zoom}
-          onViewClick={openInfoView}
+        <div className="absolute inset-0 overflow-hidden rounded-[inherit]">
+          <ScenePanel
+            controlsDisabled={infoOpen}
+            zoom={zoom}
+            onViewClick={openInfoView}
+          />
+        </div>
+
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute z-[2] border-dashed transition-[top,right,bottom,left,border-width,border-radius,border-color] duration-[700ms] ease-[cubic-bezier(0.76,0,0.24,1)]"
+          style={frameStyle}
         />
       </div>
-
-      <div
-        aria-hidden="true"
-        className={`pointer-events-none absolute z-[4] border-dashed transition-[left,top,width,height,border-width,border-radius,border-color,opacity] duration-[700ms] ease-[cubic-bezier(0.76,0,0.24,1)] ${
-          loading ? "opacity-0" : "opacity-100"
-        }`}
-        style={frameStyle}
-      />
 
       <ZoomControl
         hidden={infoOpen || loading}
