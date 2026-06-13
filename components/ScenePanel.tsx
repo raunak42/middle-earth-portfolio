@@ -2,6 +2,7 @@
 
 import "@/components/setupCustomToneMapping";
 
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Canvas } from "@react-three/fiber";
 import * as THREE from "three";
 import AnimatedPropsSquash from "@/components/AnimatedPropsSquash";
@@ -9,6 +10,171 @@ import CameraRig from "@/components/CameraRig";
 import Cave from "@/components/Cave";
 import SceneClickHandler from "@/components/SceneClickHandler";
 import { type InfoViewName } from "@/components/InfoView";
+
+type SceneFrameloop = "always" | "never";
+
+const IDLE_DPR = 2;
+const MOVING_DPR = 1.5;
+const CAMERA_MOTION_DPR = 1.6;
+const PANEL_DPR = 1.1;
+const PAUSED_DPR = 1;
+const DPR_RESTORE_DELAY = 1200;
+const SCENE_PANEL_TRANSITION_PAUSE_MS = 760;
+
+function shouldPauseScene() {
+  if (typeof document === "undefined") return false;
+
+  return document.visibilityState !== "visible" || !document.hasFocus();
+}
+
+function useInactiveTabPause() {
+  const [paused, setPaused] = useState(false);
+
+  useEffect(() => {
+    const updatePaused = () => {
+      const nextPaused = shouldPauseScene();
+      setPaused((current) => (current === nextPaused ? current : nextPaused));
+    };
+
+    updatePaused();
+
+    window.addEventListener("focus", updatePaused);
+    window.addEventListener("blur", updatePaused);
+    window.addEventListener("pageshow", updatePaused);
+    window.addEventListener("pagehide", updatePaused);
+    document.addEventListener("visibilitychange", updatePaused);
+
+    return () => {
+      window.removeEventListener("focus", updatePaused);
+      window.removeEventListener("blur", updatePaused);
+      window.removeEventListener("pageshow", updatePaused);
+      window.removeEventListener("pagehide", updatePaused);
+      document.removeEventListener("visibilitychange", updatePaused);
+    };
+  }, []);
+
+  return paused;
+}
+
+function useScenePanelTransitionPause(value: boolean) {
+  const [paused, setPaused] = useState(false);
+  const mounted = useRef(false);
+
+  useLayoutEffect(() => {
+    if (!mounted.current) {
+      mounted.current = true;
+      return;
+    }
+
+    if (!value) {
+      const resumeTimer = setTimeout(() => setPaused(false), 0);
+      return () => clearTimeout(resumeTimer);
+    }
+
+    const pauseTimer = setTimeout(() => setPaused(true), 0);
+    const resumeTimer = setTimeout(
+      () => setPaused(false),
+      SCENE_PANEL_TRANSITION_PAUSE_MS,
+    );
+
+    return () => {
+      clearTimeout(pauseTimer);
+      clearTimeout(resumeTimer);
+    };
+  }, [value]);
+
+  return paused;
+}
+
+function useMotionAwareDpr(
+  inactivePaused: boolean,
+  transitionPaused: boolean,
+  controlsDisabled: boolean,
+) {
+  const [dpr, setDpr] = useState(MOVING_DPR);
+  const restoreTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    const clearRestoreTimer = () => {
+      if (restoreTimer.current) clearTimeout(restoreTimer.current);
+      restoreTimer.current = null;
+    };
+
+    const restoreQualitySoon = () => {
+      clearRestoreTimer();
+      restoreTimer.current = setTimeout(() => {
+        setDpr(IDLE_DPR);
+        restoreTimer.current = null;
+      }, DPR_RESTORE_DELAY);
+    };
+
+    if (inactivePaused) {
+      clearRestoreTimer();
+      const pauseTimer = setTimeout(() => setDpr(PAUSED_DPR), 0);
+
+      return () => {
+        clearTimeout(pauseTimer);
+        clearRestoreTimer();
+      };
+    }
+
+    if (transitionPaused) {
+      clearRestoreTimer();
+      const expandQualityTimer = controlsDisabled
+        ? null
+        : setTimeout(() => setDpr(IDLE_DPR), 0);
+
+      return () => {
+        if (expandQualityTimer) clearTimeout(expandQualityTimer);
+        clearRestoreTimer();
+      };
+    }
+
+    if (controlsDisabled) {
+      clearRestoreTimer();
+      const panelTimer = setTimeout(() => setDpr(PANEL_DPR), 0);
+
+      return () => {
+        clearTimeout(panelTimer);
+        clearRestoreTimer();
+      };
+    }
+
+    const markPointerMotion = () => {
+      setDpr(MOVING_DPR);
+      restoreQualitySoon();
+    };
+
+    const markCameraMotion = () => {
+      setDpr(CAMERA_MOTION_DPR);
+      restoreQualitySoon();
+    };
+
+    const initialMotionTimer = setTimeout(markPointerMotion, 0);
+
+    window.addEventListener("pointermove", markPointerMotion, {
+      passive: true,
+    });
+    window.addEventListener("wheel", markCameraMotion, {
+      passive: true,
+    });
+    window.addEventListener("keydown", markCameraMotion);
+    window.addEventListener("touchstart", markCameraMotion, {
+      passive: true,
+    });
+
+    return () => {
+      clearTimeout(initialMotionTimer);
+      window.removeEventListener("pointermove", markPointerMotion);
+      window.removeEventListener("wheel", markCameraMotion);
+      window.removeEventListener("keydown", markCameraMotion);
+      window.removeEventListener("touchstart", markCameraMotion);
+      clearRestoreTimer();
+    };
+  }, [controlsDisabled, inactivePaused, transitionPaused]);
+
+  return dpr;
+}
 
 export default function ScenePanel({
   controlsDisabled,
@@ -19,13 +185,26 @@ export default function ScenePanel({
   onViewClick: (view: InfoViewName) => void;
   zoom: number;
 }) {
+  const inactivePaused = useInactiveTabPause();
+  const transitionPaused = useScenePanelTransitionPause(controlsDisabled);
+  const frameloop: SceneFrameloop =
+    inactivePaused || transitionPaused ? "never" : "always";
+  const dpr = useMotionAwareDpr(
+    inactivePaused,
+    transitionPaused,
+    controlsDisabled,
+  );
+
   return (
     <Canvas
       className="!h-full !w-full !block"
       shadows
+      dpr={dpr}
+      frameloop={frameloop}
       camera={{ position: [0, 0.15, 0.5], fov: 60, near: 0.001, far: 100 }}
       gl={{
         antialias: true,
+        powerPreference: "high-performance",
         toneMapping: THREE.CustomToneMapping,
         toneMappingExposure: 1.2,
       }}

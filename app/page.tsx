@@ -73,6 +73,7 @@ export default function HomePage() {
   );
   const [zoom, setZoom] = useState(0);
   const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const scenePointerStartedOpenRef = useRef(false);
   const { active, progress } = useProgress();
   const sceneMetrics = useScenePanelMetrics();
 
@@ -161,14 +162,33 @@ export default function HomePage() {
       />
 
       <div
+        aria-label={infoOpen ? "Expand scene" : undefined}
         className={`absolute inset-0 z-[3] transform-gpu overflow-visible shadow-none transition-[transform,border-radius,box-shadow,opacity] duration-[700ms] ease-[cubic-bezier(0.76,0,0.24,1)] will-change-transform ${
           loading
             ? "pointer-events-none opacity-0"
             : "pointer-events-auto opacity-100"
-        } ${infoOpen ? "shadow-[0_24px_80px_rgba(55,23,17,0.22)]" : ""}`}
+        } ${infoOpen ? "cursor-pointer shadow-[0_24px_80px_rgba(55,23,17,0.22)]" : ""}`}
+        role={infoOpen ? "button" : undefined}
+        tabIndex={infoOpen ? 0 : undefined}
         style={{
           ...sceneTransformStyle,
           transformOrigin: "top left",
+        }}
+        onClick={() => {
+          if (infoOpen && scenePointerStartedOpenRef.current) {
+            closeInfoView();
+          }
+          scenePointerStartedOpenRef.current = false;
+        }}
+        onPointerDownCapture={() => {
+          scenePointerStartedOpenRef.current = infoOpen;
+        }}
+        onKeyDown={(event) => {
+          if (!infoOpen) return;
+          if (event.key === "Enter" || event.key === " ") {
+            event.preventDefault();
+            closeInfoView();
+          }
         }}
       >
         <div className="absolute inset-0 overflow-hidden rounded-[inherit]">
