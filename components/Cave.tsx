@@ -4,14 +4,31 @@ import { useGLTF, Center } from "@react-three/drei";
 import { useEffect } from "react";
 import * as THREE from "three";
 
+const CUTOUT_ALPHA_TEST = 0.55;
+
+function tuneCutoutMaterial(material: THREE.Material) {
+  if (material.alphaTest <= 0) return;
+
+  material.alphaTest = Math.max(material.alphaTest, CUTOUT_ALPHA_TEST);
+  material.needsUpdate = true;
+}
+
 export default function Cave() {
   const gltf = useGLTF("/models/portfolio_room_export_NEW_MASKED_020_AURA_BLEND.glb");
 
   useEffect(() => {
     gltf.scene.traverse((obj) => {
       if ((obj as THREE.Mesh).isMesh) {
-        obj.castShadow = true;
-        obj.receiveShadow = true;
+        const mesh = obj as THREE.Mesh;
+        mesh.castShadow = true;
+        mesh.receiveShadow = true;
+
+        const { material } = mesh;
+        if (Array.isArray(material)) {
+          material.forEach(tuneCutoutMaterial);
+        } else {
+          tuneCutoutMaterial(material);
+        }
       }
     });
   }, [gltf]);
