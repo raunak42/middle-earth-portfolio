@@ -469,6 +469,7 @@ function rockAngleForWave(wave: number, rock: NonNullable<PropConfig["rock"]>) {
   return wave * range;
 }
 
+const MAX_FRAME_DELTA = 1 / 30;
 const _worldAxis = new THREE.Vector3();
 const _deltaQ    = new THREE.Quaternion();
 const _baseQ     = new THREE.Quaternion();
@@ -477,6 +478,7 @@ const _baseQ     = new THREE.Quaternion();
 export default function AnimatedPropsSquash() {
   const get = useThree((s) => s.get);
   const objectsRef = useRef<AnimEntry[]>([]);
+  const elapsedTime = useRef(0);
 
 
   useEffect(() => {
@@ -581,8 +583,9 @@ export default function AnimatedPropsSquash() {
     objectsRef.current = found;
   }, [get]);
 
-  useFrame((state) => {
-    const elapsed = state.clock.elapsedTime;
+  useFrame((_, delta) => {
+    elapsedTime.current += Math.min(delta, MAX_FRAME_DELTA);
+    const elapsed = elapsedTime.current;
 
     for (const item of objectsRef.current) {
       const {

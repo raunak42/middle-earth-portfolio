@@ -130,8 +130,17 @@ const NAZGUL_GALLOP_ROLL = 0.018;
 
 const LOCAL_Y = new THREE.Vector3(0, 1, 0);
 const TWO_PI = Math.PI * 2;
+const MAX_FRAME_DELTA = 1 / 30;
 const _pathForward = new THREE.Vector3();
 const _pathSide = new THREE.Vector3();
+const _basePos = new THREE.Vector3();
+const _target = new THREE.Vector3();
+const _forward = new THREE.Vector3();
+const _up = new THREE.Vector3(0, 1, 0);
+const _right = new THREE.Vector3();
+const _cameraUp = new THREE.Vector3();
+const _lookOffset = new THREE.Vector3();
+const _swingQ = new THREE.Quaternion();
 
 const FRODO_BONE_NAMES = [
   "frodo_left_hand",
@@ -155,6 +164,10 @@ type SectionFrodoSceneBase = {
   pathRotation: number;
 };
 
+function smoothingFactor(amount: number, delta: number) {
+  return 1 - Math.pow(1 - amount, delta * 60);
+}
+
 export default function CameraRig({
   disabled = false,
   zoom = 0,
@@ -171,6 +184,7 @@ export default function CameraRig({
   const walkTime = useRef(0);
   const gollumWalkTime = useRef(0);
   const floatTime = useRef(0);
+  const elapsedTime = useRef(0);
 
   const walkY = useRef(WALK_Y_STOPPED);
   const idleY = useRef(IDLE_Y_STOPPED);
@@ -178,6 +192,7 @@ export default function CameraRig({
   const nazgulY = useRef(NAZGUL_Y_HIDDEN);
 
   const restPose = useRef<Record<string, THREE.Quaternion>>({});
+  const objectCacheRef = useRef<Record<string, THREE.Object3D>>({});
   const gollumBaseRotation = useRef<THREE.Euler | null>(null);
   const nazgulBase = useRef<SectionFrodoSceneBase | null>(null);
   const sectionFrodoSceneBase = useRef<Record<string, SectionFrodoSceneBase>>(
@@ -191,6 +206,16 @@ export default function CameraRig({
   const smoothMouseY = useRef(0);
 
   const smoothedSpeed = useRef(0);
+
+  const getCachedObject = (scene: THREE.Scene, name: string) => {
+    const cached = objectCacheRef.current[name];
+    if (cached) return cached;
+
+    const found = scene.getObjectByName(name);
+    if (found) objectCacheRef.current[name] = found;
+
+    return found;
+  };
 
   useEffect(() => {
     const tryCapture = () => {
@@ -241,14 +266,23 @@ export default function CameraRig({
     return () => window.removeEventListener("mousemove", onMouseMove);
   }, [disabled]);
 
-  useFrame((state, delta) => {
+  useFrame((_, delta) => {
     const { camera, scene } = get();
-    const elapsed = state.clock.elapsedTime;
+    const frameDelta = Math.min(delta, MAX_FRAME_DELTA);
+    elapsedTime.current += frameDelta;
+    const elapsed = elapsedTime.current;
+
+    const cameraSmoothing = smoothingFactor(CAMERA_SMOOTHING, frameDelta);
+    const zoomSmoothing = smoothingFactor(0.08, frameDelta);
+    const mouseSmoothing = smoothingFactor(MOUSE_SMOOTHING, frameDelta);
+    const sectionSwapSmoothing = smoothingFactor(SWAP_SMOOTHING, frameDelta);
+    const speedSmoothing = smoothingFactor(SPEED_SMOOTHING, frameDelta);
+    const restPoseSmoothing = smoothingFactor(0.1, frameDelta);
 
     currentAngle.current +=
-      (targetAngle.current - currentAngle.current) * CAMERA_SMOOTHING;
+      (targetAngle.current - currentAngle.current) * cameraSmoothing;
 
-    smoothZoom.current += (zoom - smoothZoom.current) * 0.08;
+    smoothZoom.current += (zoom - smoothZoom.current) * zoomSmoothing;
 
     const radiusWave = Math.sin(currentAngle.current * FORWARD_BACK_FREQUENCY);
     const radiusOffset =
@@ -269,38 +303,35 @@ export default function CameraRig({
       secondaryHeightWave * SECONDARY_UP_DOWN_AMOUNT;
     const dynamicHeight = BASE_HEIGHT + heightOffset;
 
-    const basePos = new THREE.Vector3(
+    _basePos.set(
       Math.sin(currentAngle.current) * dynamicRadius,
       dynamicHeight,
       Math.cos(currentAngle.current) * dynamicRadius,
     );
 
     smoothMouseX.current +=
-      (mouseX.current - smoothMouseX.current) * MOUSE_SMOOTHING;
+      (mouseX.current - smoothMouseX.current) * mouseSmoothing;
     smoothMouseY.current +=
-      (mouseY.current - smoothMouseY.current) * MOUSE_SMOOTHING;
+      (mouseY.current - smoothMouseY.current) * mouseSmoothing;
 
-    const target = new THREE.Vector3(
+    _target.set(
       -Math.sin(currentAngle.current) * WALL_LOOK_AT_RADIUS,
       WALL_LOOK_AT_HEIGHT,
       -Math.cos(currentAngle.current) * WALL_LOOK_AT_RADIUS,
     );
-    const forward = new THREE.Vector3().subVectors(target, basePos).normalize();
-    const up = new THREE.Vector3(0, 1, 0);
-    const right = new THREE.Vector3().crossVectors(forward, up).normalize();
-    const cameraUp = new THREE.Vector3()
-      .crossVectors(right, forward)
-      .normalize();
+    _forward.subVectors(_target, _basePos).normalize();
+    _right.crossVectors(_forward, _up).normalize();
+    _cameraUp.crossVectors(_right, _forward).normalize();
+    _lookOffset
+      .set(0, 0, 0)
+      .addScaledVector(_right, smoothMouseX.current * MOUSE_LOOK_SENSITIVITY)
+      .addScaledVector(_cameraUp, smoothMouseY.current * MOUSE_LOOK_SENSITIVITY);
 
-    const lookOffset = new THREE.Vector3()
-      .addScaledVector(right, smoothMouseX.current * MOUSE_LOOK_SENSITIVITY)
-      .addScaledVector(cameraUp, smoothMouseY.current * MOUSE_LOOK_SENSITIVITY);
+    camera.position.copy(_basePos);
+    camera.lookAt(_target.add(_lookOffset));
 
-    camera.position.copy(basePos);
-    camera.lookAt(target.clone().add(lookOffset));
-
-    const walkRoot = scene.getObjectByName("character_walk_root");
-    const idleRoot = scene.getObjectByName("character_idle_root");
+    const walkRoot = getCachedObject(scene, "character_walk_root");
+    const idleRoot = getCachedObject(scene, "character_idle_root");
 
     if (!walkRoot || !idleRoot) return;
 
@@ -329,12 +360,10 @@ export default function CameraRig({
     const targetIdleY =
       isMoving || sectionFrodoSceneIsVisible ? IDLE_Y_MOVING : IDLE_Y_STOPPED;
 
-    const sectionSwapSmoothing = SWAP_SMOOTHING;
-
     walkY.current += (targetWalkY - walkY.current) * sectionSwapSmoothing;
-    idleY.current += (targetIdleY - idleY.current) * SWAP_SMOOTHING;
+    idleY.current += (targetIdleY - idleY.current) * sectionSwapSmoothing;
 
-    floatTime.current += delta * FLOAT_SPEED;
+    floatTime.current += frameDelta * FLOAT_SPEED;
     const floatOffset = Math.sin(floatTime.current) * FLOAT_AMPLITUDE;
 
     walkRoot.position.set(x, walkY.current, z);
@@ -349,21 +378,21 @@ export default function CameraRig({
 
     if (isMoving) {
       smoothedSpeed.current +=
-        (movementSpeed - smoothedSpeed.current) * SPEED_SMOOTHING;
+        (movementSpeed - smoothedSpeed.current) * speedSmoothing;
     } else {
       smoothedSpeed.current = 0;
     }
 
     const applySwing = (name: string, amount: number) => {
-      const obj = scene.getObjectByName(name);
+      const obj = getCachedObject(scene, name);
       const rest = restPose.current[name];
       if (!obj || !rest) return;
       obj.quaternion.copy(rest);
-      const q = new THREE.Quaternion().setFromAxisAngle(LOCAL_Y, amount);
-      obj.quaternion.multiply(q);
+      _swingQ.setFromAxisAngle(LOCAL_Y, amount);
+      obj.quaternion.multiply(_swingQ);
     };
 
-    const frodoInBoat = scene.getObjectByName("frodo_in_boat");
+    const frodoInBoat = getCachedObject(scene, "frodo_in_boat");
     if (frodoInBoat) {
       if (!sectionFrodoSceneBase.current.frodo_in_boat) {
         const authoredAngle = Math.atan2(frodoInBoat.position.z, frodoInBoat.position.x);
@@ -407,7 +436,7 @@ export default function CameraRig({
       }
     }
 
-    const nazgulRoot = scene.getObjectByName("nazgul");
+    const nazgulRoot = getCachedObject(scene, "nazgul");
     if (nazgulRoot) {
       const nazgulAngle = charAngle - NAZGUL_FOLLOW_OFFSET;
       const nx = Math.cos(nazgulAngle) * NAZGUL_RADIUS;
@@ -468,7 +497,7 @@ export default function CameraRig({
     }
 
     if (smoothedSpeed.current > 0.00001) {
-      walkTime.current += delta * smoothedSpeed.current * WALK_CYCLE_SPEED;
+      walkTime.current += frameDelta * smoothedSpeed.current * WALK_CYCLE_SPEED;
 
       const base = Math.sin(walkTime.current);
 
@@ -487,13 +516,13 @@ export default function CameraRig({
       );
     } else {
       for (const name of FRODO_BONE_NAMES) {
-        const obj = scene.getObjectByName(name);
+        const obj = getCachedObject(scene, name);
         const rest = restPose.current[name];
-        if (obj && rest) obj.quaternion.slerp(rest, 0.1);
+        if (obj && rest) obj.quaternion.slerp(rest, restPoseSmoothing);
       }
     }
 
-    const gollumRoot = scene.getObjectByName("gollum_body");
+    const gollumRoot = getCachedObject(scene, "gollum_body");
     if (!gollumRoot) return;
 
     const gollumAngle = charAngle - GOLLUM_FOLLOW_OFFSET;
@@ -524,7 +553,7 @@ export default function CameraRig({
 
     if (smoothedSpeed.current > 0.00001) {
       gollumWalkTime.current +=
-        delta * smoothedSpeed.current * GOLLUM_WALK_CYCLE_SPEED;
+        frameDelta * smoothedSpeed.current * GOLLUM_WALK_CYCLE_SPEED;
 
       const base = Math.sin(gollumWalkTime.current);
 
@@ -534,9 +563,9 @@ export default function CameraRig({
       applySwing("gollum_leg001", base * GOLLUM_RIGHT_LEG_SWING);
     } else {
       for (const name of GOLLUM_BONE_NAMES) {
-        const obj = scene.getObjectByName(name);
+        const obj = getCachedObject(scene, name);
         const rest = restPose.current[name];
-        if (obj && rest) obj.quaternion.slerp(rest, 0.1);
+        if (obj && rest) obj.quaternion.slerp(rest, restPoseSmoothing);
       }
     }
   });
