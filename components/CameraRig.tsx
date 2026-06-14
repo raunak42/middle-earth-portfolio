@@ -14,9 +14,9 @@ const CAMERA_SMOOTHING = 0.06;
 
 // Forward/back controls camera distance from the room center independently.
 // Positive radius wave = farther back, negative radius wave = farther forward.
-const BACKWARD_AMPLITUDE = 1;
-const FORWARD_AMPLITUDE = 3;
-const FORWARD_BACK_FREQUENCY = 1.9;
+const BACKWARD_AMPLITUDE = 0.5;
+const FORWARD_AMPLITUDE = 6;
+const FORWARD_BACK_FREQUENCY = 0.5;
 
 // Up/down controls camera height independently.
 // Positive height wave = up, negative height wave = down.
