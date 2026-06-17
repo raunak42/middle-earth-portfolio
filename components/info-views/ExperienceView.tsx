@@ -1,44 +1,77 @@
 "use client";
 
+import Image from "next/image";
+
 const EXPERIENCE = [
   {
-    company: "Interactive Web",
-    role: "Frontend + 3D Experiments",
-    date: "2024 — Present",
+    company: "DarDoc, Dubai",
+    role: "Frontend Developer · Full-time",
+    date: "Dec 2024 — Jan 2026",
+    image: "/experience/dardoc-og.png",
+    imageClassName: "bg-[#f8f5ed] object-cover",
+    summary:
+      "Owned the public-facing website, shipping/maintaining conversion-focused web experiences across 12+ healthcare verticals, plus internal dashboards, working closely with design and marketing/SEO.",
   },
   {
-    company: "Product Interfaces",
-    role: "Motion, systems, and UI engineering",
-    date: "2023 — 2024",
-  },
-  {
-    company: "Creative Coding",
-    role: "Shaders, Canvas, and playful prototypes",
-    date: "Ongoing",
+    company: "Pandabase, Florida",
+    role: "Frontend Developer · Contract",
+    date: "Nov 2024 — Dec 2024",
+    image: "/experience/pandabase-icon.png",
+    imageClassName: "bg-black p-1.5 object-contain",
+    summary:
+      "Integrated React UI flows with backend APIs for an entrepreneur-focused ecommerce/payments platform, handling data fetching, error states, and frontend integration logic.",
   },
 ];
 
 export default function ExperienceView() {
   return (
-    <div className="relative h-full min-h-[410px] pl-7 text-[#2a251f] md:min-h-0 md:pl-8">
-      <div className="absolute bottom-8 left-[7px] top-2 border-l-2 border-dashed border-[#2f2a23]/55 md:left-[8px]" />
-
-      <div className="space-y-5 md:space-y-9">
-        {EXPERIENCE.map((item) => (
-          <div key={item.company} className="relative">
-            <div className="absolute -left-[28px] top-2 z-[1] h-4 w-4 rounded-full border-2 border-[#2f2a23]/70 bg-[#4c9a47] md:-left-[31px]" />
-            <div className="rounded-[14px] border-2 border-dashed border-[#2f2a23]/60 bg-[#fff8e8]/36 p-4 shadow-[3px_4px_0_rgba(39,32,24,0.08)] md:p-5">
-              <h3 className="m-0 text-[clamp(17px,5vw,22px)] font-black leading-tight md:text-[clamp(18px,1.25vw,24px)]">
-                {item.company}
-              </h3>
-              <p className="mb-1 mt-2 text-[clamp(13px,3.9vw,16px)] font-bold leading-[1.45] md:text-[clamp(14px,1vw,18px)]">
-                {item.role}
-              </p>
-              <p className="m-0 text-[clamp(12px,3.5vw,15px)] font-black text-[#4c9a47] md:text-[clamp(13px,0.9vw,16px)]">
-                {item.date}
-              </p>
+    <div className="relative h-full min-h-[410px] overflow-hidden text-[#2a251f] md:min-h-0">
+      <div className="space-y-8 pt-1 md:space-y-10">
+        {EXPERIENCE.map((item, index) => (
+          <article
+            key={item.company}
+            className="grid grid-cols-[18px_minmax(0,1fr)] gap-x-6 md:gap-x-7"
+          >
+            <div className="relative">
+              {index < EXPERIENCE.length - 1 ? (
+                <div className="absolute left-1/2 top-2 h-[calc(100%+2rem)] -translate-x-1/2 border-l-2 border-dashed border-[#2f2a23]/55 md:h-[calc(100%+2.5rem)]" />
+              ) : null}
+              <div className="absolute left-1/2 top-0 z-[1] h-4 w-4 -translate-x-1/2 rounded-full border-2 border-[#2f2a23]/70 bg-[#4c9a47]" />
             </div>
-          </div>
+
+            <div className="flex items-start gap-4 md:gap-5">
+              <div className="relative h-[50px] w-[50px] shrink-0 overflow-hidden rounded-[10px] md:h-[59px] md:w-[59px]">
+                <Image
+                  className={`h-full w-full ${item.imageClassName}`}
+                  src={item.image}
+                  alt={`${item.company} logo`}
+                  width={132}
+                  height={132}
+                />
+              </div>
+
+              <div className="min-w-0 flex-1">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <h3 className="m-0 text-[clamp(18px,5vw,24px)] font-black leading-tight text-[#221f1a] md:text-[clamp(20px,1.45vw,28px)]">
+                      {item.company}
+                    </h3>
+                    <p className="mb-0 mt-1 whitespace-nowrap text-[clamp(12px,3.4vw,16px)] font-black leading-tight text-[#4c9a47] md:text-[clamp(14px,0.95vw,17px)]">
+                      {item.role}
+                    </p>
+                  </div>
+
+                  <span className="shrink-0 pt-1 text-[clamp(11px,3vw,13px)] font-black text-[#4c9a47] md:text-[clamp(12px,0.8vw,14px)]">
+                    {item.date}
+                  </span>
+                </div>
+
+                <p className="mb-0 mt-3 text-[clamp(12px,3.5vw,15px)] font-bold leading-[1.35] text-[#3b362e] md:text-[clamp(13px,0.9vw,16px)]">
+                  {item.summary}
+                </p>
+              </div>
+            </div>
+          </article>
         ))}
       </div>
     </div>
