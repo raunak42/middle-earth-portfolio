@@ -42,6 +42,15 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" style={{ backgroundColor: "#000000" }}>
+      <head>
+        <link
+          rel="preload"
+          href="/bgggg.webp"
+          as="image"
+          type="image/webp"
+          fetchPriority="high"
+        />
+      </head>
       <body style={{ backgroundColor: "#000000" }}>{children}</body>
     </html>
   );

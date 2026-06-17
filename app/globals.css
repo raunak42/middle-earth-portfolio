@@ -64,6 +64,7 @@ div:has(> div > div > span[style*="tabular-nums"])::before {
   position: absolute;
   inset: -28px;
   z-index: 0;
+  background-color: #d9c49f;
   background-image: url("/bgggg.webp");
   background-position: center;
   background-size: cover;
