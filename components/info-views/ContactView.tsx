@@ -6,11 +6,31 @@ const CONTACT_LINKS: {
   icon: ContactIconName;
   label: string;
   value: string;
+  href?: string;
 }[] = [
-  { icon: "github", label: "GitHub", value: "github.com/yourusername" },
-  { icon: "email", label: "Email", value: "hello@yourdomain.com" },
-  { icon: "phone", label: "Phone", value: "+1 234 567 8901" },
-  { icon: "linkedin", label: "LinkedIn", value: "linkedin.com/in/yourusername" },
+  {
+    icon: "github",
+    label: "GitHub",
+    value: "github.com/raunak42",
+    href: "https://github.com/raunak42",
+  },
+  {
+    icon: "email",
+    label: "Email",
+    value: "raunaklanjewar42@gmail.com",
+    href: "mailto:raunaklanjewar42@gmail.com",
+  },
+  {
+    icon: "phone",
+    label: "Phone",
+    value: "+91 9579974262",
+  },
+  {
+    icon: "linkedin",
+    label: "LinkedIn",
+    value: "linkedin.com/in/raunak42",
+    href: "https://www.linkedin.com/in/raunak42/",
+  },
 ];
 
 function ContactIcon({ icon }: { icon: ContactIconName }) {
@@ -70,21 +90,44 @@ export default function ContactView() {
   return (
     <div className="h-full text-[#2a251f]">
       <div className="grid max-w-[620px] gap-5 md:gap-6">
-        {CONTACT_LINKS.map((link) => (
-          <div key={link.label} className="flex items-center gap-4 md:gap-5">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border-2 border-dashed border-[#2f2a23]/55 p-2 text-[20px] font-black md:h-11 md:w-11 md:p-2.5 md:text-[24px] [&_svg]:h-full [&_svg]:w-full">
-              <ContactIcon icon={link.icon} />
-            </div>
-            <div className="min-w-0">
-              <h3 className="m-0 text-[clamp(17px,4.6vw,22px)] font-black leading-tight md:text-[clamp(17px,1.15vw,23px)]">
-                {link.label}
-              </h3>
-              <p className="m-0 mt-1 inline break-words border-b-2 border-[#4c9a47]/70 text-[clamp(13px,3.8vw,16px)] font-bold leading-tight md:text-[clamp(14px,0.95vw,18px)]">
-                {link.value}
-              </p>
-            </div>
-          </div>
-        ))}
+        {CONTACT_LINKS.map((link) => {
+          const content = (
+            <>
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border-2 border-dashed border-[#2f2a23]/55 p-2 text-[20px] font-black md:h-11 md:w-11 md:p-2.5 md:text-[24px] [&_svg]:h-full [&_svg]:w-full">
+                <ContactIcon icon={link.icon} />
+              </div>
+              <div className="min-w-0">
+                <h3 className="m-0 text-[clamp(17px,4.6vw,22px)] font-black leading-tight md:text-[clamp(17px,1.15vw,23px)]">
+                  {link.label}
+                </h3>
+                <p className="m-0 mt-1 inline break-words border-b-2 border-[#4c9a47]/70 text-[clamp(13px,3.8vw,16px)] font-bold leading-tight md:text-[clamp(14px,0.95vw,18px)]">
+                  {link.value}
+                </p>
+              </div>
+            </>
+          );
+
+          if (!link.href) {
+            return (
+              <div key={link.label} className="flex items-center gap-4 md:gap-5">
+                {content}
+              </div>
+            );
+          }
+
+          return (
+            <a
+              key={link.label}
+              className="flex cursor-pointer items-center gap-4 text-current no-underline transition-transform hover:translate-x-1 md:gap-5 [&_*]:cursor-pointer"
+              href={link.href}
+              target={link.href.startsWith("http") ? "_blank" : undefined}
+              rel={link.href.startsWith("http") ? "noreferrer" : undefined}
+              aria-label={`${link.label}: ${link.value}`}
+            >
+              {content}
+            </a>
+          );
+        })}
       </div>
 
       <div className="mt-7 text-right text-[28px] text-[#4c9a47] md:mt-9 md:text-[32px]">
