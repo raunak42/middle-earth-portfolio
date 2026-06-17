@@ -64,11 +64,11 @@ div:has(> div > div > span[style*="tabular-nums"])::before {
   position: absolute;
   inset: -28px;
   z-index: 0;
-  background-image: url("/bgggg.png");
+  background-image: url("/bgggg.webp");
   background-position: center;
   background-size: cover;
   opacity: 0.95;
-  filter: blur(4px) saturate(0.6);
+  filter: blur(4px) saturate(0.8);
   transform: scale(1.05);
 }
 
