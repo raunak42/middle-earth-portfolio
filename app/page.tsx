@@ -74,17 +74,29 @@ export default function HomePage() {
   const [zoom, setZoom] = useState(0);
   const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const scenePointerStartedOpenRef = useRef(false);
-  const { active, progress } = useProgress();
+  const maxProgressRef = useRef(0);
+  const { progress } = useProgress();
+  const [sceneReady, setSceneReady] = useState(false);
   const sceneMetrics = useScenePanelMetrics();
 
   const infoOpen = infoView !== null;
-  const loading = active || progress < 100;
+  const loading = !sceneReady;
 
   useEffect(() => {
     return () => {
       if (closeTimerRef.current) clearTimeout(closeTimerRef.current);
     };
   }, []);
+
+  useEffect(() => {
+    maxProgressRef.current = Math.max(maxProgressRef.current, progress);
+
+    if (maxProgressRef.current < 100) return;
+
+    const readyTimer = setTimeout(() => setSceneReady(true), 100);
+
+    return () => clearTimeout(readyTimer);
+  }, [progress]);
 
   const openInfoView = (view: InfoViewName) => {
     if (closeTimerRef.current) clearTimeout(closeTimerRef.current);
