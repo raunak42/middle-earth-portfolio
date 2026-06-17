@@ -7,36 +7,43 @@ interface Project {
   title: string;
   description: string;
   previewImage: string;
+  githubUrl?: string;
+  liveUrl?: string;
 }
 
 const PROJECTS: Project[] = [
   {
-    id: "1",
-    title: "Immersive Gallery",
+    id: "perry",
+    title: "Perry",
     description:
-      "WebGL-powered 3D art gallery with physics-based interactions and dynamic lighting.",
-    previewImage: "/green.webp",
+      "Terminal-native coding agent with tools, planning, MCP, skills, permissions, and subagents.",
+    previewImage: "/projects/perry.webp",
+    githubUrl: "https://github.com/raunak42/perry",
+    liveUrl: "https://web-perry.vercel.app",
   },
   {
-    id: "2",
-    title: "Motion Design System",
+    id: "middle-earth-portfolio",
+    title: "Middle Earth Portfolio",
     description:
-      "A reusable animation kit with spring motion, gestures, and small delightful details.",
-    previewImage: "/orange.webp",
+      "Lord of the Rings-inspired 3D portfolio with a paper-crafted world, notebook pages, and smooth scene transitions.",
+    previewImage: "/meta/lotr-portfolio-card.jpg",
+    githubUrl: "https://github.com/raunak42/middle-earth-portfolio",
   },
   {
-    id: "3",
-    title: "Data Platform",
-    description:
-      "Realtime dashboards with custom visualizations and interactive filters.",
-    previewImage: "/blue.webp",
+    id: "bubblz",
+    title: "Bubblz",
+    description: "3D-animated website for a soda store with playful product motion and bubbly interactions.",
+    previewImage: "/projects/bubblz.webp",
+    githubUrl: "https://github.com/raunak42/bubblz",
+    liveUrl: "https://bubblz.vercel.app",
   },
   {
-    id: "4",
-    title: "Generative Tool",
-    description:
-      "A browser creative-coding playground with shader controls and exports.",
-    previewImage: "/white.webp",
+    id: "nebula-store",
+    title: "Nebula Store",
+    description: "Galaxy's best merch shop with a space-themed storefront and polished ecommerce feel.",
+    previewImage: "/projects/nebula-store.webp",
+    githubUrl: "https://github.com/raunak42/nebula-store",
+    liveUrl: "https://nebula-store.vercel.app/",
   },
 ];
 
@@ -77,6 +84,40 @@ const PROJECT_PAGES = Array.from(
   (_, index) => PROJECTS.slice(index * 2, index * 2 + 2),
 );
 
+const PREVIEW_CLASS =
+  "relative block aspect-[16/9] w-[36%] shrink-0 overflow-hidden rounded-[12px] border-2 border-dashed border-[#221f1a]/85 bg-cover bg-center bg-clip-padding transition-[border-color,box-shadow,filter] duration-200 ease-out md:w-[42%]";
+
+function ProjectPreview({ project }: { project: Project }) {
+  const style = { backgroundImage: `url(${project.previewImage})` };
+  const previewUrl = project.liveUrl ?? project.githubUrl;
+
+  if (previewUrl) {
+    return (
+      <a
+        className={`${PREVIEW_CLASS} group hover:border-[#221f1a] hover:brightness-[1.04] hover:shadow-[3px_4px_0_rgba(34,31,26,0.14)]`}
+        href={previewUrl}
+        target="_blank"
+        rel="noreferrer"
+        aria-label={
+          project.liveUrl ? `Open ${project.title}` : `View ${project.title} GitHub`
+        }
+        style={style}
+      >
+        <span className="pointer-events-none absolute inset-y-0 left-0 w-1/2 -translate-x-full skew-x-[-18deg] bg-white/20 opacity-0 blur-[1px] transition-[transform,opacity] duration-500 ease-out group-hover:translate-x-[240%] group-hover:opacity-100" />
+      </a>
+    );
+  }
+
+  return (
+    <div
+      className={PREVIEW_CLASS}
+      role="img"
+      aria-label={`${project.title} preview`}
+      style={style}
+    />
+  );
+}
+
 export default function ProjectsView() {
   const [activePage, setActivePage] = useState(0);
 
@@ -90,28 +131,31 @@ export default function ProjectsView() {
   return (
     <div className="flex h-full min-h-[330px] flex-col overflow-hidden pr-1 md:min-h-0">
       <div className="min-h-0 flex-1 overflow-hidden rounded-[18px]">
-        <div
-          className="flex h-full transition-transform duration-500 ease-[cubic-bezier(0.76,0,0.24,1)]"
-          style={{ transform: `translateX(-${activePage * 100}%)` }}
-        >
-          {PROJECT_PAGES.map((pageProjects, pageIndex) => (
+        <div className="relative h-full">
+          {PROJECT_PAGES.map((pageProjects, pageIndex) => {
+            const pageOffset = pageIndex - activePage;
+
+            return (
             <div
               key={pageIndex}
-              className="flex min-w-full flex-col justify-center gap-3 md:gap-4"
+              className={`absolute inset-0 grid grid-rows-2 gap-3 transition-transform duration-500 ease-[cubic-bezier(0.76,0,0.24,1)] md:gap-4 ${
+                pageOffset === 0 ? "pointer-events-auto" : "pointer-events-none"
+              }`}
+              style={{
+                transform: `translateX(calc(${pageOffset * 100}% + ${pageOffset * 16}px))`,
+              }}
+              aria-hidden={pageOffset !== 0}
             >
               {pageProjects.map((project, projectIndex) => (
                 <article
                   key={project.id}
-                  className={`flex min-h-[132px] items-center gap-3 rounded-[16px] border-2 border-dashed border-[#2f2a23]/70 bg-[#fff8e8]/42 p-3 shadow-[3px_4px_0_rgba(39,32,24,0.08)] backdrop-blur-[1px] md:min-h-[150px] md:gap-5 md:rounded-[18px] md:border-[3px] md:p-4 ${
+                  className={`flex h-full min-h-0 items-center gap-3 rounded-[16px] border-2 border-dashed border-[#2f2a23]/70 bg-[#fff8e8]/42 p-3 shadow-[3px_4px_0_rgba(39,32,24,0.08)] backdrop-blur-[1px] md:gap-5 md:rounded-[18px] md:border-[3px] md:p-4 ${
                     projectIndex % 2 === 0
                       ? "rotate-[-0.12deg]"
                       : "rotate-[0.12deg]"
                   }`}
                 >
-                  <div
-                    className="aspect-[16/9] w-[36%] shrink-0 rounded-[12px] border-2 border-dashed border-[#2f2a23]/45 bg-cover bg-center md:w-[42%]"
-                    style={{ backgroundImage: `url(${project.previewImage})` }}
-                  />
+                  <ProjectPreview project={project} />
 
                   <div className="flex min-w-0 flex-1 flex-col self-stretch py-1">
                     <div className="flex items-start justify-between gap-3 md:gap-4">
@@ -120,18 +164,28 @@ export default function ProjectsView() {
                       </h3>
 
                       <div className="flex shrink-0 items-center gap-2 text-[clamp(17px,4.4vw,22px)] text-[#221f1a] md:gap-3 md:text-[clamp(18px,1.25vw,25px)]">
-                        <button
-                          className="cursor-pointer border-0 bg-transparent p-0 text-current transition-transform hover:scale-110"
-                          aria-label={`${project.title} GitHub`}
-                        >
-                          <GitHubIcon />
-                        </button>
-                        <button
-                          className="cursor-pointer border-0 bg-transparent p-0 text-current transition-transform hover:scale-110"
-                          aria-label={`Open ${project.title}`}
-                        >
-                          <GoToIcon />
-                        </button>
+                        {project.githubUrl ? (
+                          <a
+                            className="cursor-pointer text-current transition-transform hover:scale-110"
+                            href={project.githubUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                            aria-label={`${project.title} GitHub`}
+                          >
+                            <GitHubIcon />
+                          </a>
+                        ) : null}
+                        {project.liveUrl ? (
+                          <a
+                            className="cursor-pointer text-current transition-transform hover:scale-110"
+                            href={project.liveUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                            aria-label={`Open ${project.title}`}
+                          >
+                            <GoToIcon />
+                          </a>
+                        ) : null}
                       </div>
                     </div>
 
@@ -142,7 +196,8 @@ export default function ProjectsView() {
                 </article>
               ))}
             </div>
-          ))}
+            );
+          })}
         </div>
       </div>
 
