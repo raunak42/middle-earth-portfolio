@@ -85,7 +85,7 @@ const PROJECT_PAGES = Array.from(
 );
 
 const PREVIEW_CLASS =
-  "relative block aspect-[16/9] w-[36%] shrink-0 overflow-hidden rounded-[12px] border-2 border-dashed border-[#221f1a]/85 bg-cover bg-center bg-clip-padding transition-[border-color,box-shadow,filter] duration-200 ease-out md:w-[42%]";
+  "relative block aspect-[16/9] w-full shrink-0 overflow-hidden rounded-[12px] border-2 border-dashed border-[#221f1a]/85 bg-cover bg-center bg-clip-padding transition-[border-color,box-shadow,filter] duration-200 ease-out md:w-[42%]";
 
 function ProjectPreview({ project }: { project: Project }) {
   const style = { backgroundImage: `url(${project.previewImage})` };
@@ -129,7 +129,7 @@ export default function ProjectsView() {
   };
 
   return (
-    <div className="flex h-full min-h-[330px] flex-col overflow-hidden pr-1 md:min-h-0">
+    <div className="flex h-[430px] min-h-[430px] flex-col overflow-hidden pr-1 md:h-full md:min-h-0">
       <div className="min-h-0 flex-1 overflow-hidden rounded-[18px]">
         <div className="relative h-full">
           {PROJECT_PAGES.map((pageProjects, pageIndex) => {
@@ -138,7 +138,7 @@ export default function ProjectsView() {
             return (
             <div
               key={pageIndex}
-              className={`absolute inset-0 grid grid-rows-2 gap-3 transition-transform duration-500 ease-[cubic-bezier(0.76,0,0.24,1)] md:gap-4 ${
+              className={`absolute inset-0 grid grid-rows-2 gap-4 transition-transform duration-500 ease-[cubic-bezier(0.76,0,0.24,1)] md:gap-4 ${
                 pageOffset === 0 ? "pointer-events-auto" : "pointer-events-none"
               }`}
               style={{
@@ -149,7 +149,7 @@ export default function ProjectsView() {
               {pageProjects.map((project, projectIndex) => (
                 <article
                   key={project.id}
-                  className={`flex h-full min-h-0 items-center gap-3 rounded-[16px] border-2 border-dashed border-[#2f2a23]/70 bg-[#fff8e8]/42 p-3 shadow-[3px_4px_0_rgba(39,32,24,0.08)] backdrop-blur-[1px] md:gap-5 md:rounded-[18px] md:border-[3px] md:p-4 ${
+                  className={`grid h-full min-h-0 grid-cols-[44%_minmax(0,1fr)] grid-rows-[auto_1fr] gap-x-3 gap-y-2 rounded-[16px] border-2 border-dashed border-[#2f2a23]/70 bg-[#fff8e8]/42 p-3 shadow-[3px_4px_0_rgba(39,32,24,0.08)] backdrop-blur-[1px] md:flex md:items-center md:gap-5 md:rounded-[18px] md:border-[3px] md:p-4 ${
                     projectIndex % 2 === 0
                       ? "rotate-[-0.12deg]"
                       : "rotate-[0.12deg]"
@@ -157,13 +157,13 @@ export default function ProjectsView() {
                 >
                   <ProjectPreview project={project} />
 
-                  <div className="flex min-w-0 flex-1 flex-col self-stretch py-1">
-                    <div className="flex items-start justify-between gap-3 md:gap-4">
-                      <h3 className="m-0 text-[clamp(17px,5vw,23px)] font-black leading-[1.05] text-[#221f1a] md:text-[clamp(20px,1.55vw,30px)]">
+                  <div className="contents md:flex md:min-w-0 md:flex-1 md:flex-col md:self-stretch md:py-1">
+                    <div className="flex items-start justify-between gap-2 md:gap-4">
+                      <h3 className="m-0 text-[clamp(18px,5.2vw,24px)] font-black leading-[1.02] text-[#221f1a] md:text-[clamp(20px,1.55vw,30px)]">
                         {project.title}
                       </h3>
 
-                      <div className="flex shrink-0 items-center gap-2 text-[clamp(17px,4.4vw,22px)] text-[#221f1a] md:gap-3 md:text-[clamp(18px,1.25vw,25px)]">
+                      <div className="flex shrink-0 items-center gap-2 text-[clamp(18px,5vw,23px)] text-[#221f1a] md:gap-3 md:text-[clamp(18px,1.25vw,25px)]">
                         {project.githubUrl ? (
                           <a
                             className="cursor-pointer text-current transition-transform hover:scale-110"
@@ -189,7 +189,7 @@ export default function ProjectsView() {
                       </div>
                     </div>
 
-                    <p className="mb-0 mt-2 text-[clamp(12px,3.6vw,15px)] font-bold leading-[1.3] text-[#3b362e] md:mt-3 md:text-[clamp(13px,0.9vw,16px)] md:leading-[1.35]">
+                    <p className="col-span-2 mb-0 mt-0 text-[clamp(12px,3.35vw,14px)] font-bold leading-[1.24] text-[#3b362e] md:mt-3 md:text-[clamp(13px,0.9vw,16px)] md:leading-[1.35]">
                       {project.description}
                     </p>
                   </div>
