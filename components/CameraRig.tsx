@@ -5,6 +5,7 @@ import { useFrame, useThree } from "@react-three/fiber";
 import * as THREE from "three";
 
 const BASE_RADIUS = 6.42;
+const MOBILE_RADIUS_MULTIPLIER = 1.18;
 const BASE_HEIGHT = 4.21;
 
 const INITIAL_ANGLE = Math.atan2(-5.005, 4.025);
@@ -55,6 +56,8 @@ const NAZGUL_RADIUS = CHAR_RADIUS;
 const BOAT_FRODO_RADIUS = CHAR_RADIUS;
 
 const CHARACTER_START_ANGLE = Math.atan2(START_Z, START_X);
+const FRODO_PATH_OFFSET = 0;
+const MOBILE_FRODO_PATH_OFFSET = 0.2;
 
 const CHAR_Y = 3.5;
 
@@ -84,6 +87,7 @@ const RIGHT_LEG_OFFSET = 0.5;
 // Angular distance behind Frodo on the shared circle path.
 // Positive = trails behind in the direction of travel.
 const GOLLUM_FOLLOW_OFFSET = 0.35;
+const MOBILE_GOLLUM_FOLLOW_OFFSET = 0.15;
 
 const GOLLUM_Y = CHAR_Y + 0.5;
 const GOLLUM_Y_HIDDEN = IDLE_Y_MOVING;
@@ -267,7 +271,7 @@ export default function CameraRig({
   }, [disabled]);
 
   useFrame((_, delta) => {
-    const { camera, scene } = get();
+    const { camera, scene, size } = get();
     const frameDelta = Math.min(delta, MAX_FRAME_DELTA);
     elapsedTime.current += frameDelta;
     const elapsed = elapsedTime.current;
@@ -288,8 +292,12 @@ export default function CameraRig({
     const radiusOffset =
       Math.max(radiusWave, 0) * BACKWARD_AMPLITUDE -
       Math.max(-radiusWave, 0) * FORWARD_AMPLITUDE;
+    const viewportRadiusMultiplier =
+      size.width < 768 ? MOBILE_RADIUS_MULTIPLIER : 1;
     const dynamicRadius =
-      (BASE_RADIUS + radiusOffset) * (1 - smoothZoom.current * 0.84);
+      (BASE_RADIUS + radiusOffset) *
+      viewportRadiusMultiplier *
+      (1 - smoothZoom.current * 0.84);
 
     const heightWave = Math.sin(currentAngle.current * UP_DOWN_FREQUENCY);
     const secondaryHeightWave = Math.cos(
@@ -335,8 +343,14 @@ export default function CameraRig({
 
     if (!walkRoot || !idleRoot) return;
 
+    const isMobileViewport = size.width < 768;
+    const effectiveFrodoPathOffset = isMobileViewport
+      ? MOBILE_FRODO_PATH_OFFSET
+      : FRODO_PATH_OFFSET;
     const charAngle =
-      CHARACTER_START_ANGLE - (currentAngle.current - INITIAL_ANGLE);
+      CHARACTER_START_ANGLE -
+      (currentAngle.current - INITIAL_ANGLE) +
+      effectiveFrodoPathOffset;
     const normalizedCharAngle = ((charAngle % TWO_PI) + TWO_PI) % TWO_PI;
 
     const x = Math.cos(charAngle) * FRODO_RADIUS;
@@ -525,7 +539,10 @@ export default function CameraRig({
     const gollumRoot = getCachedObject(scene, "gollum_body");
     if (!gollumRoot) return;
 
-    const gollumAngle = charAngle - GOLLUM_FOLLOW_OFFSET;
+    const effectiveGollumFollowOffset = isMobileViewport
+      ? MOBILE_GOLLUM_FOLLOW_OFFSET
+      : GOLLUM_FOLLOW_OFFSET;
+    const gollumAngle = charAngle - effectiveGollumFollowOffset;
     const gx = Math.cos(gollumAngle) * GOLLUM_RADIUS;
     const gz = Math.sin(gollumAngle) * GOLLUM_RADIUS;
 

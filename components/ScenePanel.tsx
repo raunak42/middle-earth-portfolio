@@ -24,7 +24,7 @@ const SCENE_PANEL_TRANSITION_PAUSE_MS = 760;
 function shouldPauseScene() {
   if (typeof document === "undefined") return false;
 
-  return document.visibilityState !== "visible" || !document.hasFocus();
+  return document.visibilityState !== "visible";
 }
 
 function useInactiveTabPause() {
