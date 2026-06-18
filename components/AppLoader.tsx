@@ -6,39 +6,45 @@ import { useEffect, useRef, useState } from "react";
 const HIDE_DELAY_MS = 450;
 
 export default function AppLoader() {
-  const { active, progress } = useProgress();
+  const { progress } = useProgress();
   const maxProgressRef = useRef(0);
   const hideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [visible, setVisible] = useState(true);
   const [displayProgress, setDisplayProgress] = useState(0);
 
   useEffect(() => {
-    if (hideTimerRef.current) {
-      clearTimeout(hideTimerRef.current);
-      hideTimerRef.current = null;
-    }
+    return () => {
+      if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
+    };
+  }, []);
 
-    const nextProgress = Math.min(100, Math.max(maxProgressRef.current, progress));
-    maxProgressRef.current = nextProgress;
-    setDisplayProgress(nextProgress);
+  useEffect(() => {
+    const nextProgress = Math.min(
+      100,
+      Math.max(maxProgressRef.current, progress),
+    );
+
+    if (nextProgress !== maxProgressRef.current) {
+      maxProgressRef.current = nextProgress;
+      setDisplayProgress(nextProgress);
+    }
 
     if (nextProgress < 100) {
-      setVisible(true);
+      if (hideTimerRef.current) {
+        clearTimeout(hideTimerRef.current);
+        hideTimerRef.current = null;
+      }
+      setVisible((current) => (current ? current : true));
       return;
     }
+
+    if (hideTimerRef.current) return;
 
     hideTimerRef.current = setTimeout(() => {
       setVisible(false);
       hideTimerRef.current = null;
     }, HIDE_DELAY_MS);
-
-    return () => {
-      if (hideTimerRef.current) {
-        clearTimeout(hideTimerRef.current);
-        hideTimerRef.current = null;
-      }
-    };
-  }, [active, progress]);
+  }, [progress]);
 
   if (!visible) return null;
 
