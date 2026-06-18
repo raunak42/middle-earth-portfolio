@@ -11,6 +11,7 @@ const BASE_HEIGHT = 4.21;
 const INITIAL_ANGLE = Math.atan2(-5.005, 4.025);
 
 const SCROLL_SPEED = 0.0008;
+const TOUCH_SCROLL_SPEED = 0.0032;
 const CAMERA_SMOOTHING = 0.06;
 
 // Forward/back controls camera distance from the room center independently.
@@ -208,6 +209,7 @@ export default function CameraRig({
   const mouseY = useRef(0);
   const smoothMouseX = useRef(0);
   const smoothMouseY = useRef(0);
+  const lastTouchY = useRef<number | null>(null);
 
   const smoothedSpeed = useRef(0);
 
@@ -251,8 +253,39 @@ export default function CameraRig({
       e.preventDefault();
       targetAngle.current -= e.deltaY * SCROLL_SPEED;
     };
+
+    const onTouchStart = (e: TouchEvent) => {
+      lastTouchY.current = e.touches[0]?.clientY ?? null;
+    };
+
+    const onTouchMove = (e: TouchEvent) => {
+      const touchY = e.touches[0]?.clientY;
+      if (touchY === undefined || lastTouchY.current === null) return;
+
+      e.preventDefault();
+      const deltaY = lastTouchY.current - touchY;
+      targetAngle.current -= deltaY * TOUCH_SCROLL_SPEED;
+      lastTouchY.current = touchY;
+    };
+
+    const onTouchEnd = () => {
+      lastTouchY.current = null;
+    };
+
     window.addEventListener("wheel", onWheel, { passive: false });
-    return () => window.removeEventListener("wheel", onWheel);
+    window.addEventListener("touchstart", onTouchStart, { passive: true });
+    window.addEventListener("touchmove", onTouchMove, { passive: false });
+    window.addEventListener("touchend", onTouchEnd);
+    window.addEventListener("touchcancel", onTouchEnd);
+
+    return () => {
+      window.removeEventListener("wheel", onWheel);
+      window.removeEventListener("touchstart", onTouchStart);
+      window.removeEventListener("touchmove", onTouchMove);
+      window.removeEventListener("touchend", onTouchEnd);
+      window.removeEventListener("touchcancel", onTouchEnd);
+      lastTouchY.current = null;
+    };
   }, [disabled]);
 
   useEffect(() => {
