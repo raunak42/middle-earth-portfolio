@@ -1,12 +1,12 @@
 "use client";
 
-import { useProgress } from "@react-three/drei";
 import { useEffect, useRef, useState } from "react";
+import useLoadingProgress from "@/components/useLoadingProgress";
 
 const HIDE_DELAY_MS = 450;
 
-export default function AppLoader() {
-  const { progress } = useProgress();
+export default function AppLoader({ hidden = false }: { hidden?: boolean }) {
+  const { progress } = useLoadingProgress();
   const maxProgressRef = useRef(0);
   const hideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [visible, setVisible] = useState(true);
@@ -46,7 +46,7 @@ export default function AppLoader() {
     }, HIDE_DELAY_MS);
   }, [progress]);
 
-  if (!visible) return null;
+  if (hidden || !visible) return null;
 
   return (
     <div className="fixed inset-0 z-[9999] overflow-hidden bg-black transition-opacity duration-300">

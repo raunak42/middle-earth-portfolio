@@ -109,6 +109,28 @@ div:has(> div > div > span[style*="tabular-nums"]) > div::after {
   filter: blur(14px);
 }
 
+.notebook-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(47, 42, 35, 0.45) transparent;
+}
+
+.notebook-scroll::-webkit-scrollbar {
+  width: 5px;
+}
+
+.notebook-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.notebook-scroll::-webkit-scrollbar-thumb {
+  background: rgba(47, 42, 35, 0.38);
+  border-radius: 999px;
+}
+
+.notebook-scroll::-webkit-scrollbar-thumb:hover {
+  background: rgba(47, 42, 35, 0.55);
+}
+
 .zoom-slider {
   display: block;
   height: 20px;

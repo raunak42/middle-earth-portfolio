@@ -2,7 +2,7 @@
 
 import "@/components/setupCustomToneMapping";
 
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Canvas } from "@react-three/fiber";
 import * as THREE from "three";
 import AnimatedPropsSquash from "@/components/AnimatedPropsSquash";
@@ -19,7 +19,6 @@ const CAMERA_MOTION_DPR = 1.6;
 const PANEL_DPR = 1.1;
 const PAUSED_DPR = 1;
 const DPR_RESTORE_DELAY = 1200;
-const SCENE_PANEL_TRANSITION_PAUSE_MS = 760;
 
 function shouldPauseScene() {
   if (typeof document === "undefined") return false;
@@ -56,39 +55,8 @@ function useInactiveTabPause() {
   return paused;
 }
 
-function useScenePanelTransitionPause(value: boolean) {
-  const [paused, setPaused] = useState(false);
-  const mounted = useRef(false);
-
-  useLayoutEffect(() => {
-    if (!mounted.current) {
-      mounted.current = true;
-      return;
-    }
-
-    if (!value) {
-      const resumeTimer = setTimeout(() => setPaused(false), 0);
-      return () => clearTimeout(resumeTimer);
-    }
-
-    const pauseTimer = setTimeout(() => setPaused(true), 0);
-    const resumeTimer = setTimeout(
-      () => setPaused(false),
-      SCENE_PANEL_TRANSITION_PAUSE_MS,
-    );
-
-    return () => {
-      clearTimeout(pauseTimer);
-      clearTimeout(resumeTimer);
-    };
-  }, [value]);
-
-  return paused;
-}
-
 function useMotionAwareDpr(
   inactivePaused: boolean,
-  transitionPaused: boolean,
   controlsDisabled: boolean,
 ) {
   const [dpr, setDpr] = useState(MOVING_DPR);
@@ -114,18 +82,6 @@ function useMotionAwareDpr(
 
       return () => {
         clearTimeout(pauseTimer);
-        clearRestoreTimer();
-      };
-    }
-
-    if (transitionPaused) {
-      clearRestoreTimer();
-      const expandQualityTimer = controlsDisabled
-        ? null
-        : setTimeout(() => setDpr(IDLE_DPR), 0);
-
-      return () => {
-        if (expandQualityTimer) clearTimeout(expandQualityTimer);
         clearRestoreTimer();
       };
     }
@@ -171,29 +127,26 @@ function useMotionAwareDpr(
       window.removeEventListener("touchstart", markCameraMotion);
       clearRestoreTimer();
     };
-  }, [controlsDisabled, inactivePaused, transitionPaused]);
+  }, [controlsDisabled, inactivePaused]);
 
   return dpr;
 }
 
 export default function ScenePanel({
   controlsDisabled,
+  dprOverride,
   onViewClick,
   zoom,
 }: {
   controlsDisabled: boolean;
+  dprOverride?: number;
   onViewClick: (view: InfoViewName) => void;
   zoom: number;
 }) {
   const inactivePaused = useInactiveTabPause();
-  const transitionPaused = useScenePanelTransitionPause(controlsDisabled);
-  const frameloop: SceneFrameloop =
-    inactivePaused || transitionPaused ? "never" : "always";
-  const dpr = useMotionAwareDpr(
-    inactivePaused,
-    transitionPaused,
-    controlsDisabled,
-  );
+  const frameloop: SceneFrameloop = inactivePaused ? "never" : "always";
+  const motionAwareDpr = useMotionAwareDpr(inactivePaused, controlsDisabled);
+  const dpr = dprOverride ?? motionAwareDpr;
 
   return (
     <Canvas
@@ -204,7 +157,8 @@ export default function ScenePanel({
       camera={{ position: [0, 0.15, 0.5], fov: 60, near: 0.001, far: 100 }}
       gl={{
         antialias: true,
-        powerPreference: "high-performance",
+        powerPreference: "default",
+        preserveDrawingBuffer: true,
         toneMapping: THREE.CustomToneMapping,
         toneMappingExposure: 1.2,
       }}

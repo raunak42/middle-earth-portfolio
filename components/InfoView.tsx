@@ -1,5 +1,7 @@
 "use client";
 
+import { type ReactNode, useState } from "react";
+import { createPortal } from "react-dom";
 import AboutView from "@/components/info-views/AboutView";
 import ContactView from "@/components/info-views/ContactView";
 import ExperienceView from "@/components/info-views/ExperienceView";
@@ -126,9 +128,11 @@ const PAPER_LINE_STYLE = {
 export default function InfoView({
   view,
   onClose,
+  mobileScenePanel,
   onViewChange,
 }: {
   view: InfoViewName | null;
+  mobileScenePanel?: ReactNode;
   onClose: () => void;
   onViewChange: (view: InfoViewName) => void;
 }) {
@@ -136,6 +140,12 @@ export default function InfoView({
   const activeView = view ?? "about";
   const heading = INFO_HEADINGS[activeView];
   const backgroundImage = INFO_BACKGROUNDS[activeView];
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  const changeView = (nextView: InfoViewName) => {
+    onViewChange(nextView);
+    setMobileMenuOpen(false);
+  };
 
   return (
     <div
@@ -161,12 +171,9 @@ export default function InfoView({
       ))}
 
       <div
-        className="absolute inset-[1.6vh_3vw_2.2vh_3vw] overflow-hidden bg-[#f7e6c7] shadow-[0_20px_80px_rgba(0,0,0,0.42)] md:inset-[4vh_4vw_4.5vh_4vw]"
+        className="notebook-scroll absolute inset-[1.6vh_3vw_2.2vh_3vw] overflow-y-auto overflow-x-hidden bg-[#f7e6c7] shadow-[0_20px_80px_rgba(0,0,0,0.42)] md:inset-[4vh_4vw_4.5vh_4vw] md:overflow-hidden"
         style={PAPER_LINE_STYLE}
       >
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_35%_20%,rgba(255,255,255,0.45),transparent_32%),radial-gradient(circle_at_88%_88%,rgba(125,78,31,0.07),transparent_34%)]" />
-        <div className="pointer-events-none absolute inset-0 bg-[url('/green.webp')] bg-cover bg-center opacity-[0.16] mix-blend-multiply saturate-[0.35]" />
-
         <div className="absolute bottom-0 left-0 top-0 z-[2] hidden w-[104px] bg-[linear-gradient(90deg,rgba(35,27,19,0.16),rgba(255,255,255,0.12)_42%,transparent_82%)] md:block">
           {Array.from({ length: 15 }).map((_, index) => (
             <div
@@ -182,35 +189,27 @@ export default function InfoView({
           ))}
         </div>
 
-        <div className="absolute left-0 right-0 top-0 z-[2] h-[72px] bg-[linear-gradient(180deg,rgba(35,27,19,0.16),rgba(255,255,255,0.12)_48%,transparent_88%)] md:hidden">
-          {Array.from({ length: 8 }).map((_, index) => (
-            <div
-              key={index}
-              className="absolute top-[-18px] h-[104px] w-[28px]"
-              style={{ left: `${8 + index * 12}%` }}
-            >
-              <div className="absolute left-[5px] top-[52px] h-[39px] w-[18px] rounded-full bg-[#211d19]/45 shadow-[inset_4px_4px_7px_rgba(0,0,0,0.34),inset_-3px_-3px_5px_rgba(255,255,255,0.26)]" />
-              <div className="absolute left-[2px] top-0 h-[88px] w-[24px] rounded-full border-[6px] border-[#292722] bg-transparent shadow-[0_4px_7px_rgba(0,0,0,0.3),inset_0_3px_2px_rgba(255,255,255,0.24)]" />
-              <div className="absolute left-[5px] top-[9px] h-[62px] w-[5px] rounded-full bg-white/28 blur-[0.5px]" />
-              <div className="absolute right-[5px] top-[10px] h-[60px] w-[4px] rounded-full bg-black/28 blur-[0.5px]" />
-            </div>
-          ))}
-        </div>
-
-        <div className="absolute inset-0 z-[3] flex flex-col px-[6vw] pb-[4vh] pt-[78px] md:px-[5.8vw] md:pb-[6.2vh] md:pt-[7.4vh]">
+        <div className="relative z-[3] flex min-h-full flex-col px-[6vw] pb-[4vh] pt-[26px] md:absolute md:inset-0 md:px-[5.8vw] md:pb-[6.2vh] md:pt-[7.4vh]">
           <div className="flex shrink-0 items-start justify-between gap-3 md:ml-[1.8vw] md:gap-6">
-            <nav className="flex min-w-0 flex-1 items-center gap-4 overflow-x-auto pr-2 md:flex-none md:gap-[clamp(22px,3vw,54px)] md:overflow-visible md:pr-0">
+            <div className="min-w-0 md:hidden">
+              <h1 className="m-0 text-[clamp(28px,8vw,42px)] font-black leading-none text-[#24211d]">
+                {heading.title} <span className="text-[#4c9a47]">{heading.doodle}</span>
+              </h1>
+              <div className="mt-2 h-[4px] w-[min(220px,68vw)] rounded-full bg-[#4c9a47]" />
+            </div>
+
+            <nav className="hidden min-w-0 flex-1 items-center gap-4 pr-3 md:flex md:flex-none md:gap-[clamp(22px,3vw,54px)] md:overflow-visible md:pr-0">
               {INFO_TABS.map((tab) => {
                 const active = view === tab.view;
 
                 return (
                   <button
                     key={tab.view}
-                    className="group relative flex shrink-0 cursor-pointer items-center gap-2 border-0 bg-transparent p-0 text-[clamp(13px,3.6vw,17px)] font-black text-[#24211d] [font:inherit] md:text-[clamp(16px,1.2vw,23px)]"
-                    onClick={() => onViewChange(tab.view)}
+                    className="group relative flex min-w-0 shrink-0 cursor-pointer items-center gap-1.5 border-0 bg-transparent p-0 text-[clamp(12px,3.4vw,15px)] font-black text-[#24211d] [font:inherit] md:gap-2 md:text-[clamp(16px,1.2vw,23px)]"
+                    onClick={() => changeView(tab.view)}
                   >
                     <HandDrawnIcon view={tab.view} />
-                    <span>{tab.label}</span>
+                    <span className="min-w-0 truncate">{tab.label}</span>
                     <span
                       className={`absolute -bottom-2 left-0 h-[3px] rounded-full bg-[#4c9a47] transition-all duration-200 ${
                         active ? "w-full" : "w-0 group-hover:w-full"
@@ -222,33 +221,102 @@ export default function InfoView({
             </nav>
 
             <button
-              className="cursor-pointer rounded-[8px] border-2 border-dashed border-transparent bg-transparent px-3 py-1 text-[clamp(14px,3.7vw,18px)] font-black text-[#24211d] transition-colors hover:border-[#24211d] [font:inherit] md:text-[clamp(18px,1.25vw,24px)]"
+              className="ml-auto flex h-10 w-10 shrink-0 cursor-pointer items-center justify-center rounded-[10px] border-2 border-dashed border-[#24211d]/45 bg-[#fff8e8]/50 text-[#24211d] shadow-[2px_3px_0_rgba(39,32,24,0.08)] [font:inherit] md:hidden"
+              onClick={() => setMobileMenuOpen(true)}
+              aria-label="Open navigation"
+              aria-expanded={mobileMenuOpen}
+            >
+              <span className="relative block h-[16px] w-[20px] before:absolute before:left-0 before:top-0 before:h-[3px] before:w-full before:rounded-full before:bg-current before:content-[''] after:absolute after:bottom-0 after:left-0 after:h-[3px] after:w-full after:rounded-full after:bg-current after:content-['']">
+                <span className="absolute left-0 top-1/2 h-[3px] w-full -translate-y-1/2 rounded-full bg-current" />
+              </span>
+            </button>
+
+            <button
+              className="hidden shrink-0 cursor-pointer rounded-[8px] border-2 border-dashed border-transparent bg-transparent px-3 py-1 font-black text-[#24211d] transition-colors hover:border-[#24211d] [font:inherit] md:block md:text-[clamp(18px,1.25vw,24px)]"
               onClick={onClose}
             >
               Close
             </button>
           </div>
 
-          <div className="mt-[48vh] flex min-h-0 flex-1 flex-col md:mt-[5vh] md:grid md:grid-cols-[minmax(0,48%)_minmax(0,1fr)] md:gap-[4vw] md:pl-[4vw]">
+          {open && mobileMenuOpen && typeof document !== "undefined"
+            ? createPortal(
+                <div
+                  className="fixed inset-0 z-[60] bg-[#201c18]/28 opacity-100 md:hidden"
+                  onClick={() => setMobileMenuOpen(false)}
+                  aria-hidden={false}
+                >
+                  <div
+                    className="absolute right-[6vw] top-[24px] w-[min(260px,72vw)] translate-x-0 rounded-[18px] border-2 border-dashed border-[#24211d]/55 bg-[#fff3d5] p-3 shadow-[6px_8px_0_rgba(39,32,24,0.16)]"
+                    style={PAPER_LINE_STYLE}
+                    onClick={(event) => event.stopPropagation()}
+                  >
+                    <div className="mb-3 flex items-center justify-between gap-3">
+                      <p className="m-0 text-[18px] font-black text-[#24211d]">Menu</p>
+                      <button
+                        className="cursor-pointer rounded-[8px] border-2 border-dashed border-[#24211d]/35 bg-transparent px-2 py-0.5 text-[15px] font-black text-[#24211d] [font:inherit]"
+                        onClick={() => setMobileMenuOpen(false)}
+                      >
+                        Close
+                      </button>
+                    </div>
+
+                    <div className="grid gap-2">
+                      {INFO_TABS.map((tab) => {
+                        const active = view === tab.view;
+
+                        return (
+                          <button
+                            key={tab.view}
+                            className={`flex cursor-pointer items-center gap-3 rounded-[12px] border-2 border-dashed px-3 py-2 text-left text-[17px] font-black text-[#24211d] [font:inherit] ${
+                              active
+                                ? "border-[#4c9a47]/70 bg-[#4c9a47]/12"
+                                : "border-transparent bg-[#fff8e8]/35"
+                            }`}
+                            onClick={() => changeView(tab.view)}
+                          >
+                            <HandDrawnIcon view={tab.view} />
+                            <span>{tab.label}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>,
+                document.body,
+              )
+            : null}
+
+          {mobileScenePanel ? (
+            <div className="mt-[clamp(26px,4.5vh,44px)] md:hidden">
+              {mobileScenePanel}
+            </div>
+          ) : null}
+
+          <div
+            className={`flex flex-none flex-col md:mt-[5vh] md:grid md:min-h-0 md:flex-1 md:grid-cols-[minmax(0,48%)_minmax(0,1fr)] md:gap-[4vw] md:pl-[4vw] ${
+              mobileScenePanel ? "mt-8" : "mt-[40vh]"
+            }`}
+          >
             <div aria-hidden="true" className="hidden md:block" />
 
-            <section className="flex min-h-0 flex-1 flex-col text-left md:max-w-[760px]">
+            <section className="flex flex-none flex-col text-left md:min-h-0 md:flex-1 md:max-w-[760px]">
               {activeView === "about" ? (
                 <>
-                  <header className="shrink-0">
+                  <header className="hidden shrink-0 md:block">
                     <h1 className="m-0 text-[clamp(30px,9vw,46px)] font-black leading-none text-[#24211d] md:text-[clamp(34px,2.8vw,58px)]">
                       {heading.title} <span className="text-[#4c9a47]">{heading.doodle}</span>
                     </h1>
                     <div className="mt-2 h-[4px] w-[min(260px,60%)] rounded-full bg-[#4c9a47]" />
                   </header>
 
-                  <main className="mt-[2.4vh] min-h-0 flex-1 overflow-y-auto pr-1 md:mt-[3vh] md:pr-2">
+                  <main className="mt-[2.4vh] flex-none overflow-visible pr-1 md:mt-[3vh] md:min-h-0 md:flex-1 md:overflow-y-auto md:pr-2">
                     <AboutView />
                   </main>
                 </>
               ) : (
                 <>
-                  <header className="shrink-0">
+                  <header className="hidden shrink-0 md:block">
                     <h1 className="m-0 text-[clamp(30px,9vw,46px)] font-black leading-none text-[#24211d] md:text-[clamp(34px,2.8vw,58px)]">
                       {heading.title} <span className="text-[#4c9a47]">{heading.doodle}</span>
                     </h1>
@@ -258,7 +326,7 @@ export default function InfoView({
                     </p>
                   </header>
 
-                  <main className="mt-[2.4vh] min-h-0 flex-1 overflow-y-auto pr-1 md:mt-[3vh] md:pr-2">
+                  <main className="mt-[2.4vh] flex-none overflow-visible pr-1 md:mt-[3vh] md:min-h-0 md:flex-1 md:overflow-y-auto md:pr-2">
                     <CurrentView view={view} />
                   </main>
                 </>

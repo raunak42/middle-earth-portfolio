@@ -9,6 +9,8 @@ const MOBILE_RADIUS_MULTIPLIER = 1.18;
 const BASE_HEIGHT = 4.21;
 
 const INITIAL_ANGLE = Math.atan2(-5.005, 4.025);
+let sharedCurrentAngle = INITIAL_ANGLE;
+let sharedTargetAngle = INITIAL_ANGLE;
 
 const SCROLL_SPEED = 0.0008;
 const TOUCH_SCROLL_SPEED = 0.0032;
@@ -182,8 +184,8 @@ export default function CameraRig({
 }) {
   const get = useThree((s) => s.get);
 
-  const currentAngle = useRef(INITIAL_ANGLE);
-  const targetAngle = useRef(INITIAL_ANGLE);
+  const currentAngle = useRef(sharedCurrentAngle);
+  const targetAngle = useRef(sharedTargetAngle);
   const smoothZoom = useRef(zoom);
 
   const walkTime = useRef(0);
@@ -252,6 +254,7 @@ export default function CameraRig({
     const onWheel = (e: WheelEvent) => {
       e.preventDefault();
       targetAngle.current -= e.deltaY * SCROLL_SPEED;
+      sharedTargetAngle = targetAngle.current;
     };
 
     const onTouchStart = (e: TouchEvent) => {
@@ -265,6 +268,7 @@ export default function CameraRig({
       e.preventDefault();
       const deltaY = lastTouchY.current - touchY;
       targetAngle.current -= deltaY * TOUCH_SCROLL_SPEED;
+      sharedTargetAngle = targetAngle.current;
       lastTouchY.current = touchY;
     };
 
@@ -318,6 +322,8 @@ export default function CameraRig({
 
     currentAngle.current +=
       (targetAngle.current - currentAngle.current) * cameraSmoothing;
+    sharedCurrentAngle = currentAngle.current;
+    sharedTargetAngle = targetAngle.current;
 
     smoothZoom.current += (zoom - smoothZoom.current) * zoomSmoothing;
 

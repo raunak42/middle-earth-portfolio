@@ -1,8 +1,9 @@
 "use client";
 
 import { useGLTF, Center } from "@react-three/drei";
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import * as THREE from "three";
+import { clone as cloneSkeleton } from "three/examples/jsm/utils/SkeletonUtils.js";
 
 const CUTOUT_ALPHA_TEST = 0.55;
 
@@ -15,9 +16,10 @@ function tuneCutoutMaterial(material: THREE.Material) {
 
 export default function Cave() {
   const gltf = useGLTF("/models/portfolio_room_export_NEW_MASKED_020_AURA_BLEND.glb");
+  const scene = useMemo(() => cloneSkeleton(gltf.scene), [gltf.scene]);
 
   useEffect(() => {
-    gltf.scene.traverse((obj) => {
+    scene.traverse((obj) => {
       if ((obj as THREE.Mesh).isMesh) {
         const mesh = obj as THREE.Mesh;
         mesh.castShadow = true;
@@ -31,7 +33,7 @@ export default function Cave() {
         }
       }
     });
-  }, [gltf]);
+  }, [scene]);
 
   return (
     <>
@@ -96,7 +98,7 @@ export default function Cave() {
         color="#d0e8ff"
       />
       <Center>
-        <primitive object={gltf.scene} />
+        <primitive object={scene} />
       </Center>
     </>
   );
