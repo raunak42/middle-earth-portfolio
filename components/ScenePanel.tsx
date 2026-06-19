@@ -96,21 +96,11 @@ function useMotionAwareDpr(
       };
     }
 
-    const markPointerMotion = () => {
-      setDpr(MOVING_DPR);
-      restoreQualitySoon();
-    };
-
     const markCameraMotion = () => {
       setDpr(CAMERA_MOTION_DPR);
       restoreQualitySoon();
     };
 
-    const initialMotionTimer = setTimeout(markPointerMotion, 0);
-
-    window.addEventListener("pointermove", markPointerMotion, {
-      passive: true,
-    });
     window.addEventListener("wheel", markCameraMotion, {
       passive: true,
     });
@@ -120,8 +110,6 @@ function useMotionAwareDpr(
     });
 
     return () => {
-      clearTimeout(initialMotionTimer);
-      window.removeEventListener("pointermove", markPointerMotion);
       window.removeEventListener("wheel", markCameraMotion);
       window.removeEventListener("keydown", markCameraMotion);
       window.removeEventListener("touchstart", markCameraMotion);
