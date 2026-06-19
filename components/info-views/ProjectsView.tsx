@@ -14,7 +14,7 @@ interface Project {
 const PROJECTS: Project[] = [
   {
     id: "perry",
-    title: "Perry",
+    title: "Perry - Agentic Coding Harness",
     description:
       "Terminal-native coding agent with tools, planning, MCP, skills, permissions, and subagents.",
     previewImage: "/projects/perry.webp",
@@ -28,6 +28,7 @@ const PROJECTS: Project[] = [
       "Lord of the Rings-inspired 3D portfolio with a paper-crafted world, notebook pages, and smooth scene transitions.",
     previewImage: "/meta/lotr-portfolio-card.jpg",
     githubUrl: "https://github.com/raunak42/middle-earth-portfolio",
+    liveUrl: "https://www.raunakcodes.online/",
   },
   {
     id: "bubblz",
@@ -159,7 +160,7 @@ export default function ProjectsView() {
 
                   <div className="contents md:flex md:min-w-0 md:flex-1 md:flex-col md:self-stretch md:py-1">
                     <div className="flex flex-col items-start gap-1 md:flex-row md:justify-between md:gap-4">
-                      <h3 className="m-0 text-[clamp(18px,5.2vw,24px)] font-black leading-[1.02] text-[#221f1a] md:text-[clamp(20px,1.55vw,30px)]">
+                      <h3 className="m-0 text-[clamp(15px,4.2vw,20px)] font-black leading-[1.08] text-[#221f1a] md:text-[clamp(17px,1.1vw,22px)]">
                         {project.title}
                       </h3>
 
