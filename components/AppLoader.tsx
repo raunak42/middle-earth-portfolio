@@ -151,6 +151,10 @@ export default function AppLoader({ hidden = false }: { hidden?: boolean }) {
           >
             0.00%
           </div>
+
+          <div className="mt-8 text-[clamp(15px,3.8vw,19px)] font-black text-[#163522] drop-shadow-[0_1px_0_rgba(255,248,232,0.5)]">
+            ~ Tip: Scroll to explore ~
+          </div>
         </div>
       </div>
     </div>
