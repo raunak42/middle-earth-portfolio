@@ -119,6 +119,27 @@ const INFO_HEADINGS: Record<
   },
 };
 
+function HeadingDoodle({
+  doodle,
+  view,
+}: {
+  doodle: string;
+  view: InfoViewName;
+}) {
+  const className =
+    "inline-block align-[-0.04em] text-[0.9em] text-[#4c9a47] [&>svg]:h-[1em] [&>svg]:w-[1em]";
+
+  if (view === "contact") {
+    return <span className={className}>{doodle}</span>;
+  }
+
+  return (
+    <span className={className}>
+      <HandDrawnIcon view={view} />
+    </span>
+  );
+}
+
 const PAPER_LINE_STYLE = {
   backgroundImage:
     "linear-gradient(90deg, transparent 0 76px, rgba(190,99,83,0.28) 77px, transparent 78px), repeating-linear-gradient(0deg, transparent 0 31px, rgba(83,121,145,0.22) 32px, transparent 33px)",
@@ -193,7 +214,7 @@ export default function InfoView({
           <div className="flex shrink-0 items-start justify-between gap-3 md:ml-[1.8vw] md:gap-6">
             <div className="min-w-0 md:hidden">
               <h1 className="m-0 text-[clamp(28px,8vw,42px)] font-black leading-none text-[#24211d]">
-                {heading.title} <span className="text-[#4c9a47]">{heading.doodle}</span>
+                {heading.title} <HeadingDoodle view={activeView} doodle={heading.doodle} />
               </h1>
               <div className="mt-2 h-[4px] w-[min(220px,68vw)] rounded-full bg-[#4c9a47]" />
             </div>
@@ -305,7 +326,7 @@ export default function InfoView({
                 <>
                   <header className="hidden shrink-0 md:block">
                     <h1 className="m-0 text-[clamp(30px,9vw,46px)] font-black leading-none text-[#24211d] md:text-[clamp(34px,2.8vw,58px)]">
-                      {heading.title} <span className="text-[#4c9a47]">{heading.doodle}</span>
+                      {heading.title} <HeadingDoodle view={activeView} doodle={heading.doodle} />
                     </h1>
                     <div className="mt-2 h-[4px] w-[min(260px,60%)] rounded-full bg-[#4c9a47]" />
                   </header>
@@ -318,7 +339,7 @@ export default function InfoView({
                 <>
                   <header className="hidden shrink-0 md:block">
                     <h1 className="m-0 text-[clamp(30px,9vw,46px)] font-black leading-none text-[#24211d] md:text-[clamp(34px,2.8vw,58px)]">
-                      {heading.title} <span className="text-[#4c9a47]">{heading.doodle}</span>
+                      {heading.title} <HeadingDoodle view={activeView} doodle={heading.doodle} />
                     </h1>
                     <div className="mt-2 h-[4px] w-[min(260px,60%)] rounded-full bg-[#4c9a47]" />
                     <p className="mt-3 max-w-[760px] text-[clamp(14px,4vw,17px)] font-bold leading-[1.45] text-[#3d3830] md:mt-4 md:text-[clamp(14px,1vw,19px)]">

@@ -85,7 +85,7 @@ const PROJECT_PAGES = Array.from(
 );
 
 const PREVIEW_CLASS =
-  "relative block aspect-[16/9] w-full shrink-0 overflow-hidden rounded-[12px] border-2 border-dashed border-[#221f1a]/85 bg-cover bg-center bg-clip-padding transition-[border-color,box-shadow,filter] duration-200 ease-out md:w-[42%]";
+  "relative block aspect-[16/9] w-[42.5vw] shrink-0 overflow-hidden rounded-[12px] border-[3px] border-dashed border-[#24211d] bg-cover bg-center bg-clip-padding transition-[border-color,box-shadow,filter] duration-200 ease-out md:w-[42%] md:border-2 md:border-[#221f1a]/85";
 
 function ProjectPreview({ project }: { project: Project }) {
   const style = { backgroundImage: `url(${project.previewImage})` };
@@ -130,7 +130,7 @@ export default function ProjectsView() {
 
   return (
     <div className="flex h-[430px] min-h-[430px] flex-col overflow-hidden pr-1 md:h-full md:min-h-0">
-      <div className="min-h-0 flex-1 overflow-hidden rounded-[18px]">
+      <div className="min-h-0 flex-1 overflow-hidden rounded-none">
         <div className="relative h-full">
           {PROJECT_PAGES.map((pageProjects, pageIndex) => {
             const pageOffset = pageIndex - activePage;
@@ -149,7 +149,7 @@ export default function ProjectsView() {
               {pageProjects.map((project, projectIndex) => (
                 <article
                   key={project.id}
-                  className={`grid h-full min-h-0 grid-cols-[44%_minmax(0,1fr)] grid-rows-[auto_1fr] gap-x-3 gap-y-2 rounded-[16px] border-2 border-dashed border-[#2f2a23]/70 bg-[#fff8e8]/42 p-3 shadow-[3px_4px_0_rgba(39,32,24,0.08)] backdrop-blur-[1px] md:flex md:items-center md:gap-5 md:rounded-[18px] md:border-[3px] md:p-4 ${
+                  className={`grid h-full min-h-0 grid-cols-[42.5vw_minmax(0,1fr)] grid-rows-[auto_1fr] gap-x-3 gap-y-2 rounded-[16px] border-0 border-[#2f2a23]/70 bg-transparent p-0 shadow-none backdrop-blur-none md:flex md:items-center md:gap-5 md:rounded-[18px] md:border-[3px] md:border-dashed md:bg-[#fff8e8]/42 md:p-4 md:shadow-[3px_4px_0_rgba(39,32,24,0.08)] md:backdrop-blur-[1px] ${
                     projectIndex % 2 === 0
                       ? "rotate-[-0.12deg]"
                       : "rotate-[0.12deg]"
@@ -158,7 +158,7 @@ export default function ProjectsView() {
                   <ProjectPreview project={project} />
 
                   <div className="contents md:flex md:min-w-0 md:flex-1 md:flex-col md:self-stretch md:py-1">
-                    <div className="flex items-start justify-between gap-2 md:gap-4">
+                    <div className="flex flex-col items-start gap-1 md:flex-row md:justify-between md:gap-4">
                       <h3 className="m-0 text-[clamp(18px,5.2vw,24px)] font-black leading-[1.02] text-[#221f1a] md:text-[clamp(20px,1.55vw,30px)]">
                         {project.title}
                       </h3>

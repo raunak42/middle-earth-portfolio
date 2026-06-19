@@ -48,7 +48,7 @@ function TechChip({ children }: { children: string }) {
 
 function MobileTechWord({ children }: { children: string }) {
   return (
-    <span className="inline-flex translate-y-[0.06em] items-center gap-1 whitespace-nowrap font-black leading-none text-[#24211d]">
+    <span className="mx-1 inline-flex translate-y-[0.06em] items-center gap-1 whitespace-nowrap rounded-[7px] border-[1.5px] border-dashed border-[#2f2a23]/55 bg-[#fff8e8]/40 px-1.5 py-[0.08em] leading-none text-[#24211d] shadow-[1.5px_1.5px_0_rgba(39,32,24,0.07)]">
       <TechIcon name={children} />
       {children}
     </span>
@@ -66,7 +66,7 @@ export default function AboutView() {
         Hi, I am Raunak
       </p>
       <h1 className="m-0 text-[clamp(32px,8vw,46px)] font-black leading-[0.95] text-[#24211d] md:text-[clamp(38px,3.4vw,62px)]">
-        Agentic Engineer
+        Creative Engineer
       </h1>
 
       <div className="clear-left mt-5 text-[clamp(13px,3.7vw,16px)] font-semibold leading-[1.68] text-[#3d3830] md:hidden [&>p+p]:mt-3">

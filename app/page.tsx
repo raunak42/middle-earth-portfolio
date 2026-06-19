@@ -99,7 +99,7 @@ function MobileTransitionLoader() {
     <div className="fixed inset-0 z-[10000] overflow-hidden bg-black text-[#163522]">
       <div className="pointer-events-none absolute inset-[-28px] scale-105 bg-[#d9c49f] bg-[url('/bgggg.webp')] bg-cover bg-center opacity-95 blur-[4px] saturate-[0.8]" />
       <div className="relative z-10 flex h-full w-full items-center justify-center">
-        <div className="rounded-[24px] border-2 border-dashed border-[#163522]/35 bg-[#fff8e8]/70 px-8 py-6 text-center shadow-[0_20px_70px_rgba(22,53,34,0.18)] backdrop-blur-sm">
+        <div className="relative px-10 py-8 text-center before:absolute before:inset-[-64px] before:-z-10 before:rounded-full before:bg-[radial-gradient(ellipse_at_center,rgba(248,223,180,0.82)_0%,rgba(248,223,180,0.56)_32%,rgba(248,223,180,0.26)_62%,transparent_100%)] before:blur-[30px] before:content-[''] after:absolute after:inset-[-36px] after:-z-10 after:rounded-full after:bg-[radial-gradient(ellipse_at_center,rgba(255,241,210,0.38)_0%,rgba(255,241,210,0.14)_55%,transparent_100%)] after:blur-[14px] after:content-['']">
           <Loader
             className="mx-auto h-8 w-8 animate-spin text-[#163522]"
             aria-label="Loading"
@@ -506,15 +506,10 @@ export default function HomePage() {
     };
   }, [infoOpen, isMobileViewport, sceneMetrics]);
 
-  const mobileScenePanelStyle = sceneMetrics
-    ? {
-        height: sceneMetrics.height,
-        width: sceneMetrics.width,
-      }
-    : {
-        aspectRatio: MOBILE_SCENE_PANEL_ASPECT,
-        width: "min(max(72vw, 240px), calc(100vw - 56px), 360px)",
-      };
+  const mobileScenePanelStyle = {
+    aspectRatio: MOBILE_SCENE_PANEL_ASPECT,
+    width: "calc(100% - 8px)",
+  };
   const mobileScenePanelRevealed =
     mobileScenePhase === "open" || mobileScenePhase === "closing";
   const mobileScenePanelInteractive =

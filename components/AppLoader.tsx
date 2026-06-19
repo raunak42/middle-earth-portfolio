@@ -135,7 +135,10 @@ export default function AppLoader({ hidden = false }: { hidden?: boolean }) {
 
       <div className="relative z-10 flex h-full w-full items-center justify-center">
         <div className="relative px-14 py-8 text-center before:absolute before:inset-[-64px] before:-z-10 before:rounded-full before:bg-[radial-gradient(ellipse_at_center,rgba(248,223,180,0.82)_0%,rgba(248,223,180,0.56)_32%,rgba(248,223,180,0.26)_62%,transparent_100%)] before:blur-[30px] before:content-[''] after:absolute after:inset-[-36px] after:-z-10 after:rounded-full after:bg-[radial-gradient(ellipse_at_center,rgba(255,241,210,0.38)_0%,rgba(255,241,210,0.14)_55%,transparent_100%)] after:blur-[14px] after:content-['']">
-          <div className="h-[6px] w-[180px] overflow-hidden rounded-full bg-white/40">
+          <div className="mb-4 whitespace-nowrap text-[clamp(24px,5vw,42px)] font-black leading-none text-[#163522] drop-shadow-[0_2px_0_rgba(255,248,232,0.45)]">
+            Raunak&apos;s Middle Earth
+          </div>
+          <div className="mx-auto h-[6px] w-[180px] overflow-hidden rounded-full bg-white/40">
             <div
               ref={barRef}
               className="h-full w-full origin-left rounded-full bg-[#163522]"
