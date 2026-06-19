@@ -4,7 +4,7 @@ import { useEffect, useRef } from "react";
 import { useFrame, useThree } from "@react-three/fiber";
 import * as THREE from "three";
 
-const BASE_RADIUS = 6.42;
+const BASE_RADIUS = 4.42;
 const MOBILE_RADIUS_MULTIPLIER = 1;
 const BASE_HEIGHT = 4.21;
 
@@ -19,15 +19,15 @@ const CAMERA_SMOOTHING = 0.06;
 // Forward/back controls camera distance from the room center independently.
 // Positive radius wave = farther back, negative radius wave = farther forward.
 const BACKWARD_AMPLITUDE = 0.5;
-const FORWARD_AMPLITUDE = 6;
-const FORWARD_BACK_FREQUENCY = 0.5;
+const FORWARD_AMPLITUDE = 2;
+const FORWARD_BACK_FREQUENCY = 1.4;
 const MOBILE_BACKWARD_AMPLITUDE = 0;
 const MOBILE_FORWARD_AMPLITUDE = 0;
 const MOBILE_FORWARD_BACK_FREQUENCY = 0;
 
 // Up/down controls camera height independently.
 // Positive height wave = up, negative height wave = down.
-const UP_AMPLITUDE = 0.5;
+const UP_AMPLITUDE = 0;
 const DOWN_AMPLITUDE = 2.0;
 const UP_DOWN_FREQUENCY = 2.3;
 
