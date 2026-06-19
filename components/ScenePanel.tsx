@@ -24,7 +24,7 @@ const EXPAND_DPR_RESTORE_DELAY = 750;
 function shouldPauseScene() {
   if (typeof document === "undefined") return false;
 
-  return document.visibilityState !== "visible" || !document.hasFocus();
+  return document.visibilityState !== "visible";
 }
 
 function useInactiveTabPause() {
@@ -45,15 +45,11 @@ function useInactiveTabPause() {
 
     updatePaused();
 
-    window.addEventListener("focus", updatePaused);
-    window.addEventListener("blur", pauseImmediately);
     window.addEventListener("pageshow", updatePaused);
     window.addEventListener("pagehide", pauseImmediately);
     document.addEventListener("visibilitychange", updatePaused);
 
     return () => {
-      window.removeEventListener("focus", updatePaused);
-      window.removeEventListener("blur", pauseImmediately);
       window.removeEventListener("pageshow", updatePaused);
       window.removeEventListener("pagehide", pauseImmediately);
       document.removeEventListener("visibilitychange", updatePaused);
