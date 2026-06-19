@@ -50,6 +50,20 @@ export default function RootLayout({
           type="image/webp"
           fetchPriority="high"
         />
+        <link
+          rel="preload"
+          href="/fonts/shantell-sans/ShantellSans-Regular.ttf"
+          as="font"
+          type="font/ttf"
+          crossOrigin="anonymous"
+        />
+        <link
+          rel="preload"
+          href="/fonts/shantell-sans/ShantellSans-ExtraBold.ttf"
+          as="font"
+          type="font/ttf"
+          crossOrigin="anonymous"
+        />
       </head>
       <body style={{ backgroundColor: "#000000" }}>{children}</body>
     </html>

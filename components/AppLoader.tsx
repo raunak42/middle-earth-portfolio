@@ -4,17 +4,49 @@ import { useEffect, useRef, useState } from "react";
 import useLoadingProgress from "@/components/useLoadingProgress";
 
 const HIDE_DELAY_MS = 450;
+const FAKE_PROGRESS_INTERVAL_MS = 50;
+const FAKE_FAST_PROGRESS_STEP = 4;
+const FAKE_SLOW_PROGRESS_STEP = 1.2;
 
 export default function AppLoader({ hidden = false }: { hidden?: boolean }) {
   const { progress } = useLoadingProgress();
   const maxProgressRef = useRef(0);
   const hideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const fakeProgressTimerRef = useRef<ReturnType<typeof setInterval> | null>(
+    null,
+  );
   const [visible, setVisible] = useState(true);
+  const [fakeProgress, setFakeProgress] = useState(0);
   const [displayProgress, setDisplayProgress] = useState(0);
 
   useEffect(() => {
     return () => {
       if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
+      if (fakeProgressTimerRef.current) {
+        clearInterval(fakeProgressTimerRef.current);
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    fakeProgressTimerRef.current = setInterval(() => {
+      setFakeProgress((currentProgress) => {
+        if (currentProgress >= 90) return currentProgress;
+
+        const step =
+          currentProgress < 50
+            ? FAKE_FAST_PROGRESS_STEP
+            : FAKE_SLOW_PROGRESS_STEP;
+
+        return Math.min(90, currentProgress + step);
+      });
+    }, FAKE_PROGRESS_INTERVAL_MS);
+
+    return () => {
+      if (fakeProgressTimerRef.current) {
+        clearInterval(fakeProgressTimerRef.current);
+        fakeProgressTimerRef.current = null;
+      }
     };
   }, []);
 
@@ -26,7 +58,6 @@ export default function AppLoader({ hidden = false }: { hidden?: boolean }) {
 
     if (nextProgress !== maxProgressRef.current) {
       maxProgressRef.current = nextProgress;
-      setDisplayProgress(nextProgress);
     }
 
     if (nextProgress < 100) {
@@ -45,6 +76,22 @@ export default function AppLoader({ hidden = false }: { hidden?: boolean }) {
       hideTimerRef.current = null;
     }, HIDE_DELAY_MS);
   }, [progress]);
+
+  useEffect(() => {
+    const actualProgress = maxProgressRef.current;
+    const nextDisplayProgress =
+      actualProgress >= 100
+        ? 100
+        : actualProgress >= 90
+          ? actualProgress
+          : Math.max(actualProgress, fakeProgress);
+
+    setDisplayProgress((currentProgress) =>
+      nextDisplayProgress > currentProgress
+        ? Math.min(100, nextDisplayProgress)
+        : currentProgress,
+    );
+  }, [fakeProgress, progress]);
 
   if (hidden || !visible) return null;
 
