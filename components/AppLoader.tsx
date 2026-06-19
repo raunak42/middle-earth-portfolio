@@ -5,10 +5,10 @@ import useLoadingProgress from "@/components/useLoadingProgress";
 
 const HIDE_DELAY_MS = 450;
 
-// Tune these to change the "feel" of the fake crawl.
-// 0 -> 50 happens fast, 50 -> 90 happens slower, then we wait on real progress.
+// Tune these to taste.
 const FAST_PHASE_DURATION_MS = 350; // 0 -> 50
 const SLOW_PHASE_DURATION_MS = 1400; // 50 -> 90
+const FINISH_DURATION_MS = 300; // wherever-we-are -> 100, once real load is done
 
 function computeFakeProgress(elapsedMs: number): number {
   if (elapsedMs <= 0) return 0;
@@ -25,6 +25,10 @@ function computeFakeProgress(elapsedMs: number): number {
   return 90;
 }
 
+function easeOutCubic(t: number): number {
+  return 1 - Math.pow(1 - t, 3);
+}
+
 export default function AppLoader({ hidden = false }: { hidden?: boolean }) {
   const { progress: realProgress } = useLoadingProgress();
 
@@ -34,37 +38,45 @@ export default function AppLoader({ hidden = false }: { hidden?: boolean }) {
   const realProgressRef = useRef(0);
   const displayRef = useRef(0);
   const startTimeRef = useRef<number | null>(null);
+  const finishRef = useRef<{ time: number; from: number } | null>(null);
   const rafRef = useRef<number | null>(null);
   const hideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Always keep the latest real progress available to the animation loop,
-  // without needing to restart it.
   useEffect(() => {
     const safeValue = Number.isFinite(realProgress) ? realProgress : 0;
     realProgressRef.current = Math.min(100, Math.max(0, safeValue));
   }, [realProgress]);
 
-  // Single source of truth: one rAF loop computes displayProgress every frame.
   useEffect(() => {
     if (startTimeRef.current === null) {
       startTimeRef.current = performance.now();
     }
 
     const tick = (now: number) => {
-      const elapsed = now - (startTimeRef.current ?? now);
-      const fake = computeFakeProgress(elapsed);
-      const real = realProgressRef.current;
+      // Once the real load is done, lock in a smooth, fixed-duration finish
+      // animation instead of snapping straight to whatever the real value is.
+      if (!finishRef.current && realProgressRef.current >= 100) {
+        finishRef.current = { time: now, from: displayRef.current };
+      }
 
-      // Below 90: follow the fake crawl.
-      // At/above 90: hand off to real progress (never below 90 though).
-      const target = fake < 90 ? fake : Math.max(90, real);
+      let target: number;
+      let isDone = false;
+
+      if (finishRef.current) {
+        const elapsedFinish = now - finishRef.current.time;
+        const t = Math.min(1, elapsedFinish / FINISH_DURATION_MS);
+        const eased = easeOutCubic(t);
+        target = finishRef.current.from + (100 - finishRef.current.from) * eased;
+        isDone = t >= 1;
+      } else {
+        const elapsed = now - (startTimeRef.current ?? now);
+        target = computeFakeProgress(elapsed); // caps at 90 until finish triggers
+      }
 
       if (target > displayRef.current) {
         displayRef.current = Math.min(100, target);
         setDisplayProgress(displayRef.current);
       }
-
-      const isDone = real >= 100 && displayRef.current >= 100;
 
       if (isDone) {
         if (!hideTimerRef.current) {
@@ -73,7 +85,7 @@ export default function AppLoader({ hidden = false }: { hidden?: boolean }) {
             hideTimerRef.current = null;
           }, HIDE_DELAY_MS);
         }
-        return; // stop looping once finished
+        return;
       }
 
       rafRef.current = requestAnimationFrame(tick);
