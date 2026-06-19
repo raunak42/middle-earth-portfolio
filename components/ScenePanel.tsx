@@ -19,6 +19,7 @@ const CAMERA_MOTION_DPR = 1.6;
 const PANEL_DPR = 1.1;
 const PAUSED_DPR = 1;
 const DPR_RESTORE_DELAY = 1200;
+const EXPAND_DPR_RESTORE_DELAY = 750;
 
 function shouldPauseScene() {
   if (typeof document === "undefined") return false;
@@ -96,7 +97,10 @@ function useMotionAwareDpr(
       };
     }
 
-    const idleTimer = setTimeout(() => setDpr(IDLE_DPR), 0);
+    const idleTimer = setTimeout(
+      () => setDpr(IDLE_DPR),
+      EXPAND_DPR_RESTORE_DELAY,
+    );
 
     const markCameraMotion = () => {
       setDpr(CAMERA_MOTION_DPR);

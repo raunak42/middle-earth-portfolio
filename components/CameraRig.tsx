@@ -5,7 +5,7 @@ import { useFrame, useThree } from "@react-three/fiber";
 import * as THREE from "three";
 
 const BASE_RADIUS = 6.42;
-const MOBILE_RADIUS_MULTIPLIER = 1.18;
+const MOBILE_RADIUS_MULTIPLIER = 1;
 const BASE_HEIGHT = 4.21;
 
 const INITIAL_ANGLE = Math.atan2(-5.005, 4.025);
@@ -21,6 +21,9 @@ const CAMERA_SMOOTHING = 0.06;
 const BACKWARD_AMPLITUDE = 0.5;
 const FORWARD_AMPLITUDE = 6;
 const FORWARD_BACK_FREQUENCY = 0.5;
+const MOBILE_BACKWARD_AMPLITUDE = 0;
+const MOBILE_FORWARD_AMPLITUDE = 0;
+const MOBILE_FORWARD_BACK_FREQUENCY = 0;
 
 // Up/down controls camera height independently.
 // Positive height wave = up, negative height wave = down.
@@ -90,7 +93,7 @@ const RIGHT_LEG_OFFSET = 0.5;
 // Angular distance behind Frodo on the shared circle path.
 // Positive = trails behind in the direction of travel.
 const GOLLUM_FOLLOW_OFFSET = 0.35;
-const MOBILE_GOLLUM_FOLLOW_OFFSET = 0.15;
+const MOBILE_GOLLUM_FOLLOW_OFFSET = 0.25;
 
 const GOLLUM_Y = CHAR_Y + 0.5;
 const GOLLUM_Y_HIDDEN = IDLE_Y_MOVING;
@@ -327,12 +330,23 @@ export default function CameraRig({
 
     smoothZoom.current += (zoom - smoothZoom.current) * zoomSmoothing;
 
-    const radiusWave = Math.sin(currentAngle.current * FORWARD_BACK_FREQUENCY);
+    const isMobileViewport = size.width < 768;
+    const forwardBackFrequency = isMobileViewport
+      ? MOBILE_FORWARD_BACK_FREQUENCY
+      : FORWARD_BACK_FREQUENCY;
+    const backwardAmplitude = isMobileViewport
+      ? MOBILE_BACKWARD_AMPLITUDE
+      : BACKWARD_AMPLITUDE;
+    const forwardAmplitude = isMobileViewport
+      ? MOBILE_FORWARD_AMPLITUDE
+      : FORWARD_AMPLITUDE;
+    const radiusWave = Math.sin(currentAngle.current * forwardBackFrequency);
     const radiusOffset =
-      Math.max(radiusWave, 0) * BACKWARD_AMPLITUDE -
-      Math.max(-radiusWave, 0) * FORWARD_AMPLITUDE;
-    const viewportRadiusMultiplier =
-      size.width < 768 ? MOBILE_RADIUS_MULTIPLIER : 1;
+      Math.max(radiusWave, 0) * backwardAmplitude -
+      Math.max(-radiusWave, 0) * forwardAmplitude;
+    const viewportRadiusMultiplier = isMobileViewport
+      ? MOBILE_RADIUS_MULTIPLIER
+      : 1;
     const dynamicRadius =
       (BASE_RADIUS + radiusOffset) *
       viewportRadiusMultiplier *
@@ -382,7 +396,6 @@ export default function CameraRig({
 
     if (!walkRoot || !idleRoot) return;
 
-    const isMobileViewport = size.width < 768;
     const effectiveFrodoPathOffset = isMobileViewport
       ? MOBILE_FRODO_PATH_OFFSET
       : FRODO_PATH_OFFSET;
