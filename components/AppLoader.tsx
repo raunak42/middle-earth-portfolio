@@ -4,105 +4,93 @@ import { useEffect, useRef, useState } from "react";
 import useLoadingProgress from "@/components/useLoadingProgress";
 
 const HIDE_DELAY_MS = 450;
-const FAKE_FAST_PROGRESS_DELAY_MS = 2;
-const FAKE_SLOW_PROGRESS_DELAY_MS = 4;
+
+// Tune these to change the "feel" of the fake crawl.
+// 0 -> 50 happens fast, 50 -> 90 happens slower, then we wait on real progress.
+const FAST_PHASE_DURATION_MS = 350; // 0 -> 50
+const SLOW_PHASE_DURATION_MS = 1400; // 50 -> 90
+
+function computeFakeProgress(elapsedMs: number): number {
+  if (elapsedMs <= 0) return 0;
+
+  if (elapsedMs < FAST_PHASE_DURATION_MS) {
+    return (elapsedMs / FAST_PHASE_DURATION_MS) * 50;
+  }
+
+  const slowElapsed = elapsedMs - FAST_PHASE_DURATION_MS;
+  if (slowElapsed < SLOW_PHASE_DURATION_MS) {
+    return 50 + (slowElapsed / SLOW_PHASE_DURATION_MS) * 40;
+  }
+
+  return 90;
+}
 
 export default function AppLoader({ hidden = false }: { hidden?: boolean }) {
-  const { progress } = useLoadingProgress();
-  const maxProgressRef = useRef(0);
-  const fakeProgressRef = useRef(0);
-  const hideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const fakeProgressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(
-    null,
-  );
-  const [visible, setVisible] = useState(true);
-  const [fakeProgress, setFakeProgress] = useState(0);
+  const { progress: realProgress } = useLoadingProgress();
+
   const [displayProgress, setDisplayProgress] = useState(0);
+  const [visible, setVisible] = useState(true);
+
+  const realProgressRef = useRef(0);
+  const displayRef = useRef(0);
+  const startTimeRef = useRef<number | null>(null);
+  const rafRef = useRef<number | null>(null);
+  const hideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Always keep the latest real progress available to the animation loop,
+  // without needing to restart it.
+  useEffect(() => {
+    const safeValue = Number.isFinite(realProgress) ? realProgress : 0;
+    realProgressRef.current = Math.min(100, Math.max(0, safeValue));
+  }, [realProgress]);
+
+  // Single source of truth: one rAF loop computes displayProgress every frame.
+  useEffect(() => {
+    if (startTimeRef.current === null) {
+      startTimeRef.current = performance.now();
+    }
+
+    const tick = (now: number) => {
+      const elapsed = now - (startTimeRef.current ?? now);
+      const fake = computeFakeProgress(elapsed);
+      const real = realProgressRef.current;
+
+      // Below 90: follow the fake crawl.
+      // At/above 90: hand off to real progress (never below 90 though).
+      const target = fake < 90 ? fake : Math.max(90, real);
+
+      if (target > displayRef.current) {
+        displayRef.current = Math.min(100, target);
+        setDisplayProgress(displayRef.current);
+      }
+
+      const isDone = real >= 100 && displayRef.current >= 100;
+
+      if (isDone) {
+        if (!hideTimerRef.current) {
+          hideTimerRef.current = setTimeout(() => {
+            setVisible(false);
+            hideTimerRef.current = null;
+          }, HIDE_DELAY_MS);
+        }
+        return; // stop looping once finished
+      }
+
+      rafRef.current = requestAnimationFrame(tick);
+    };
+
+    rafRef.current = requestAnimationFrame(tick);
+
+    return () => {
+      if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    };
+  }, []);
 
   useEffect(() => {
     return () => {
       if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
-      if (fakeProgressTimerRef.current) {
-        clearTimeout(fakeProgressTimerRef.current);
-      }
     };
   }, []);
-
-  useEffect(() => {
-    let cancelled = false;
-
-    const scheduleNextTick = () => {
-      const nextDelay =
-        fakeProgressRef.current < 50
-          ? FAKE_FAST_PROGRESS_DELAY_MS
-          : FAKE_SLOW_PROGRESS_DELAY_MS;
-
-      fakeProgressTimerRef.current = setTimeout(tickFakeProgress, nextDelay);
-    };
-
-    const tickFakeProgress = () => {
-      if (cancelled) return;
-
-      const nextProgress = Math.min(90, fakeProgressRef.current + 1);
-      fakeProgressRef.current = nextProgress;
-      setFakeProgress(nextProgress);
-
-      if (nextProgress < 90) scheduleNextTick();
-    };
-
-    scheduleNextTick();
-
-    return () => {
-      cancelled = true;
-      if (fakeProgressTimerRef.current) {
-        clearTimeout(fakeProgressTimerRef.current);
-        fakeProgressTimerRef.current = null;
-      }
-    };
-  }, []);
-
-  useEffect(() => {
-    const nextProgress = Math.min(
-      100,
-      Math.max(maxProgressRef.current, progress),
-    );
-
-    if (nextProgress !== maxProgressRef.current) {
-      maxProgressRef.current = nextProgress;
-    }
-
-    if (nextProgress < 100) {
-      if (hideTimerRef.current) {
-        clearTimeout(hideTimerRef.current);
-        hideTimerRef.current = null;
-      }
-      setVisible((current) => (current ? current : true));
-    }
-  }, [progress]);
-
-  useEffect(() => {
-    const actualProgress = maxProgressRef.current;
-    const nextDisplayProgress =
-      fakeProgress < 90
-        ? fakeProgress
-        : actualProgress >= 90
-          ? actualProgress
-          : 90;
-
-    setDisplayProgress((currentProgress) =>
-      nextDisplayProgress > currentProgress
-        ? Math.min(100, nextDisplayProgress)
-        : currentProgress,
-    );
-
-    if (actualProgress < 100 || fakeProgress < 90) return;
-    if (hideTimerRef.current) return;
-
-    hideTimerRef.current = setTimeout(() => {
-      setVisible(false);
-      hideTimerRef.current = null;
-    }, HIDE_DELAY_MS);
-  }, [fakeProgress, progress]);
 
   if (hidden || !visible) return null;
 
