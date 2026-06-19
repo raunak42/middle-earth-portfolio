@@ -152,7 +152,7 @@ export default function ScenePanel({
 
   return (
     <Canvas
-      className="!h-full !w-full !block"
+      className={`!h-full !w-full !block ${controlsDisabled ? "touch-pan-y" : "touch-none"}` }
       shadows
       dpr={dpr}
       frameloop={frameloop}

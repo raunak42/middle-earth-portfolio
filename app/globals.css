@@ -112,6 +112,10 @@ div:has(> div > div > span[style*="tabular-nums"]) > div::after {
 .notebook-scroll {
   scrollbar-width: thin;
   scrollbar-color: rgba(47, 42, 35, 0.45) transparent;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: contain;
+  scroll-behavior: auto;
+  touch-action: pan-y;
 }
 
 .notebook-scroll::-webkit-scrollbar {

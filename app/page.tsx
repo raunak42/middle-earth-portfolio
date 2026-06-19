@@ -17,7 +17,7 @@ import ZoomControl from "@/components/ZoomControl";
 import useLoadingProgress from "@/components/useLoadingProgress";
 const SCENE_PANEL_TRANSITION_MS = 700;
 const MOBILE_SCENE_PANEL_ASPECT = 1.6;
-const MOBILE_SCENE_PANEL_DPR = 3;
+const MOBILE_SCENE_PANEL_DPR = 2.4;
 const MOBILE_TRANSITION_LOADING_MS = 450;
 const MOBILE_MEDIA_QUERY = "(max-width: 767px)";
 
