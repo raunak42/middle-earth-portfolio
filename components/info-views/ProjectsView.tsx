@@ -61,6 +61,25 @@ function GitHubIcon() {
   );
 }
 
+function ArchiveBoxIcon() {
+  return (
+    <svg
+      className="h-[1.25em] w-[1.25em]"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth="2.5"
+      aria-hidden="true"
+    >
+      <path d="M5.2 8.2c4.55-.24 9.12-.24 13.68 0 .84.04 1.4.62 1.44 1.46.16 3.12.16 6.24 0 9.36-.04.84-.62 1.42-1.46 1.46-4.57.22-9.12.22-13.66 0-.84-.04-1.42-.62-1.46-1.46a91.52 91.52 0 0 1 0-9.36c.04-.84.62-1.42 1.46-1.46Z" />
+      <path d="M6.35 8.1 7.1 4.95c.16-.66.66-1.06 1.34-1.06h7.14c.68 0 1.18.4 1.34 1.06l.75 3.15" />
+      <path d="M9.15 12.45c1.9.16 3.8.16 5.7 0" />
+    </svg>
+  );
+}
+
 function GoToIcon() {
   return (
     <svg
@@ -84,6 +103,9 @@ const PROJECT_PAGES = Array.from(
   { length: Math.ceil(PROJECTS.length / 2) },
   (_, index) => PROJECTS.slice(index * 2, index * 2 + 2),
 );
+const CAROUSEL_PAGES = [...PROJECT_PAGES, "archive" as const];
+
+const ARCHIVE_URL = "https://github.com/raunak42";
 
 const PREVIEW_CLASS =
   "relative block aspect-[16/9] w-[42.5vw] shrink-0 overflow-hidden rounded-[12px] border-[3px] border-dashed border-[#24211d] bg-cover bg-center bg-clip-padding transition-[border-color,box-shadow,filter] duration-200 ease-out md:w-[42%] md:border-2 md:border-[#221f1a]/85";
@@ -125,7 +147,7 @@ export default function ProjectsView() {
   const moveBy = (amount: number) => {
     setActivePage(
       (currentPage) =>
-        (currentPage + amount + PROJECT_PAGES.length) % PROJECT_PAGES.length,
+        (currentPage + amount + CAROUSEL_PAGES.length) % CAROUSEL_PAGES.length,
     );
   };
 
@@ -133,13 +155,17 @@ export default function ProjectsView() {
     <div className="flex h-[430px] min-h-[430px] flex-col overflow-hidden pr-1 md:h-full md:min-h-0">
       <div className="min-h-0 flex-1 overflow-hidden rounded-none">
         <div className="relative h-full">
-          {PROJECT_PAGES.map((pageProjects, pageIndex) => {
+          {CAROUSEL_PAGES.map((page, pageIndex) => {
             const pageOffset = pageIndex - activePage;
+            const isArchivePage = page === "archive";
+            const pageProjects = isArchivePage ? [] : page;
 
             return (
             <div
               key={pageIndex}
-              className={`absolute inset-0 grid grid-rows-2 gap-4 transition-transform duration-500 ease-[cubic-bezier(0.76,0,0.24,1)] md:gap-4 ${
+              className={`absolute inset-0 transition-transform duration-500 ease-[cubic-bezier(0.76,0,0.24,1)] ${
+                isArchivePage ? "grid place-items-center" : "grid grid-rows-2 gap-4 md:gap-4"
+              } ${
                 pageOffset === 0 ? "pointer-events-auto" : "pointer-events-none"
               }`}
               style={{
@@ -147,6 +173,30 @@ export default function ProjectsView() {
               }}
               aria-hidden={pageOffset !== 0}
             >
+              {isArchivePage ? (
+                <a
+                  className="group flex w-[min(92%,420px)] flex-col items-center justify-center rounded-[18px] border-[3px] border-dashed border-[#24211d] bg-transparent px-5 py-6 text-center text-[#221f1a] transition-[transform,background-color,box-shadow] hover:-translate-y-1 hover:bg-[#fff8e8]/24 hover:shadow-[4px_5px_0_rgba(39,32,24,0.08)] md:w-[min(72%,500px)] md:border-[#2f2a23]/70 md:bg-[#fff8e8]/30 md:px-7 md:py-7"
+                  href={ARCHIVE_URL}
+                  target="_blank"
+                  rel="noreferrer"
+                  aria-label="View archived projects"
+                >
+                  <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-[14px] border-2 border-dashed border-[#4c9a47]/70 bg-[#4c9a47]/10 text-[27px] text-[#221f1a] transition-transform group-hover:rotate-[-3deg] group-hover:scale-105 md:h-14 md:w-14 md:text-[30px]">
+                    <ArchiveBoxIcon />
+                  </div>
+                  <h3 className="m-0 text-[clamp(22px,5.4vw,30px)] font-black leading-none text-[#221f1a] md:text-[clamp(25px,1.7vw,34px)]">
+                    Archived Projects
+                  </h3>
+                  <p className="mb-0 mt-3 max-w-[360px] text-[clamp(12px,3.35vw,15px)] font-bold leading-[1.35] text-[#3b362e] md:text-[clamp(13px,0.9vw,16px)]">
+                    Older experiments, prototypes, and extra builds live in one tidy archive.
+                  </p>
+                  <span className="mt-4 inline-flex items-center gap-2 rounded-full border-2 border-dashed border-[#4c9a47]/65 px-3.5 py-1.5 text-[13px] font-black text-[#221f1a] group-hover:bg-[#4c9a47]/12 md:text-[14px]">
+                    Open Archive
+                    <GoToIcon />
+                  </span>
+                </a>
+              ) : null}
+
               {pageProjects.map((project, projectIndex) => (
                 <article
                   key={project.id}
@@ -202,7 +252,7 @@ export default function ProjectsView() {
         </div>
       </div>
 
-      <div className="mt-3 flex shrink-0 items-center justify-center gap-3 text-[#221f1a] md:mt-5 md:gap-4">
+      <div className="mt-3 flex shrink-0 flex-wrap items-center justify-center gap-3 text-[#221f1a] md:mt-5 md:gap-4">
         <button
           className="cursor-pointer rounded-full border-2 border-dashed border-[#2f2a23]/65 bg-transparent px-3 py-1.5 text-[14px] font-black transition-colors hover:bg-[#2f2a23]/8 [font:inherit] md:px-4 md:py-2 md:text-[16px]"
           onClick={() => moveBy(-1)}
@@ -212,7 +262,7 @@ export default function ProjectsView() {
         </button>
 
         <div className="flex items-center justify-center gap-2.5">
-          {PROJECT_PAGES.map((_, index) => {
+          {CAROUSEL_PAGES.map((_, index) => {
             const active = index === activePage;
 
             return (
@@ -237,6 +287,7 @@ export default function ProjectsView() {
         >
           →
         </button>
+
       </div>
     </div>
   );
