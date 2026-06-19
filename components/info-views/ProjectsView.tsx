@@ -19,7 +19,7 @@ const PROJECTS: Project[] = [
       "Terminal-native coding agent with tools, planning, MCP, skills, permissions, and subagents.",
     previewImage: "/projects/perry.webp",
     githubUrl: "https://github.com/raunak42/perry",
-    liveUrl: "https://web-perry.vercel.app",
+    liveUrl: "https://agent-perry.vercel.app/",
   },
   {
     id: "middle-earth-portfolio",
