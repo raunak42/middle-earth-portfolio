@@ -512,6 +512,10 @@ export default function HomePage() {
   };
   const mobileScenePanelRevealed =
     mobileScenePhase === "open" || mobileScenePhase === "closing";
+  const mobileScenePanelShouldRender =
+    mobileScenePanelVisible && mobileScenePanelRevealed;
+  const mainSceneShouldRender =
+    !isMobileViewport || !mobileScenePanelShouldRender;
   const mobileScenePanelInteractive =
     infoOpen && mobileScenePanelRevealed && mobileScenePhase === "open";
 
@@ -543,7 +547,9 @@ export default function HomePage() {
               }}
             >
               <div className="absolute inset-0 overflow-hidden rounded-[16px] bg-black shadow-[0_12px_32px_rgba(36,33,29,0.18)]">
-                {renderSceneContent(true, MOBILE_SCENE_PANEL_DPR)}
+                {mobileScenePanelShouldRender
+                  ? renderSceneContent(true, MOBILE_SCENE_PANEL_DPR)
+                  : null}
               </div>
               <div
                 aria-hidden="true"
@@ -596,7 +602,7 @@ export default function HomePage() {
               transformOrigin: "top left",
             }}
           >
-            {renderSceneContent(infoOpen)}
+            {mainSceneShouldRender ? renderSceneContent(infoOpen) : null}
           </div>
         </div>
 

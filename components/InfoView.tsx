@@ -192,9 +192,11 @@ export default function InfoView({
       ))}
 
       <div
-        className="notebook-scroll absolute inset-[1.6vh_3vw_2.2vh_3vw] overflow-y-auto overflow-x-hidden bg-[#f7e6c7] shadow-[0_20px_80px_rgba(0,0,0,0.42)] md:inset-[4vh_4vw_4.5vh_4vw] md:overflow-hidden"
+        className="pointer-events-none absolute inset-[1.6vh_3vw_2.2vh_3vw] bg-[#f7e6c7] shadow-[0_20px_80px_rgba(0,0,0,0.42)] md:inset-[4vh_4vw_4.5vh_4vw]"
         style={PAPER_LINE_STYLE}
-      >
+      />
+
+      <div className="notebook-scroll absolute inset-[1.6vh_3vw_2.2vh_3vw] overflow-y-auto overflow-x-hidden bg-transparent md:inset-[4vh_4vw_4.5vh_4vw] md:overflow-hidden">
         <div className="absolute bottom-0 left-0 top-0 z-[2] hidden w-[104px] bg-[linear-gradient(90deg,rgba(35,27,19,0.16),rgba(255,255,255,0.12)_42%,transparent_82%)] md:block">
           {Array.from({ length: 15 }).map((_, index) => (
             <div
