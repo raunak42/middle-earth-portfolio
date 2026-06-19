@@ -4,15 +4,14 @@ import { useEffect, useRef, useState } from "react";
 import useLoadingProgress from "@/components/useLoadingProgress";
 
 const HIDE_DELAY_MS = 450;
-const FAKE_PROGRESS_INTERVAL_MS = 50;
-const FAKE_FAST_PROGRESS_STEP = 4;
-const FAKE_SLOW_PROGRESS_STEP = 1.2;
+const FAKE_FAST_PROGRESS_DELAY_MS = 20;
+const FAKE_SLOW_PROGRESS_DELAY_MS = 70;
 
 export default function AppLoader({ hidden = false }: { hidden?: boolean }) {
   const { progress } = useLoadingProgress();
   const maxProgressRef = useRef(0);
   const hideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const fakeProgressTimerRef = useRef<ReturnType<typeof setInterval> | null>(
+  const fakeProgressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(
     null,
   );
   const [visible, setVisible] = useState(true);
@@ -23,28 +22,44 @@ export default function AppLoader({ hidden = false }: { hidden?: boolean }) {
     return () => {
       if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
       if (fakeProgressTimerRef.current) {
-        clearInterval(fakeProgressTimerRef.current);
+        clearTimeout(fakeProgressTimerRef.current);
       }
     };
   }, []);
 
   useEffect(() => {
-    fakeProgressTimerRef.current = setInterval(() => {
+    let cancelled = false;
+
+    const tickFakeProgress = () => {
       setFakeProgress((currentProgress) => {
         if (currentProgress >= 90) return currentProgress;
 
-        const step =
-          currentProgress < 50
-            ? FAKE_FAST_PROGRESS_STEP
-            : FAKE_SLOW_PROGRESS_STEP;
+        const nextProgress = Math.min(90, currentProgress + 1);
+        const nextDelay =
+          nextProgress < 50
+            ? FAKE_FAST_PROGRESS_DELAY_MS
+            : FAKE_SLOW_PROGRESS_DELAY_MS;
 
-        return Math.min(90, currentProgress + step);
+        if (!cancelled && nextProgress < 90) {
+          fakeProgressTimerRef.current = setTimeout(
+            tickFakeProgress,
+            nextDelay,
+          );
+        }
+
+        return nextProgress;
       });
-    }, FAKE_PROGRESS_INTERVAL_MS);
+    };
+
+    fakeProgressTimerRef.current = setTimeout(
+      tickFakeProgress,
+      FAKE_FAST_PROGRESS_DELAY_MS,
+    );
 
     return () => {
+      cancelled = true;
       if (fakeProgressTimerRef.current) {
-        clearInterval(fakeProgressTimerRef.current);
+        clearTimeout(fakeProgressTimerRef.current);
         fakeProgressTimerRef.current = null;
       }
     };
