@@ -96,6 +96,8 @@ function useMotionAwareDpr(
       };
     }
 
+    const idleTimer = setTimeout(() => setDpr(IDLE_DPR), 0);
+
     const markCameraMotion = () => {
       setDpr(CAMERA_MOTION_DPR);
       restoreQualitySoon();
@@ -110,6 +112,7 @@ function useMotionAwareDpr(
     });
 
     return () => {
+      clearTimeout(idleTimer);
       window.removeEventListener("wheel", markCameraMotion);
       window.removeEventListener("keydown", markCameraMotion);
       window.removeEventListener("touchstart", markCameraMotion);
