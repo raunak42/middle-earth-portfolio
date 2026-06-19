@@ -6,9 +6,9 @@ import useLoadingProgress from "@/components/useLoadingProgress";
 const HIDE_DELAY_MS = 450;
 
 // Tune these to taste.
-const FAST_PHASE_DURATION_MS = 350; // 0 -> 50
-const SLOW_PHASE_DURATION_MS = 1400; // 50 -> 90
-const FINISH_DURATION_MS = 300; // wherever-we-are -> 100, once real load is done
+const FAST_PHASE_DURATION_MS = 350; // 0 -> 50, guaranteed, ignores real progress
+const SLOW_PHASE_DURATION_MS = 1400; // 50 -> 90, guaranteed, ignores real progress
+const FINISH_DURATION_MS = 300; // 90 -> 100, only starts once real load is done
 
 function computeFakeProgress(elapsedMs: number): number {
   if (elapsedMs <= 0) return 0;
@@ -22,7 +22,7 @@ function computeFakeProgress(elapsedMs: number): number {
     return 50 + (slowElapsed / SLOW_PHASE_DURATION_MS) * 40;
   }
 
-  return 90;
+  return 90; // plateau — holds here no matter how fast/slow real loading is
 }
 
 function easeOutCubic(t: number): number {
@@ -53,24 +53,27 @@ export default function AppLoader({ hidden = false }: { hidden?: boolean }) {
     }
 
     const tick = (now: number) => {
-      // Once the real load is done, lock in a smooth, fixed-duration finish
-      // animation instead of snapping straight to whatever the real value is.
-      if (!finishRef.current && realProgressRef.current >= 100) {
-        finishRef.current = { time: now, from: displayRef.current };
-      }
+      const elapsed = now - (startTimeRef.current ?? now);
+      const fake = computeFakeProgress(elapsed); // 0..90, time-only, ignores real entirely
 
       let target: number;
       let isDone = false;
 
-      if (finishRef.current) {
+      if (fake < 90) {
+        // Guaranteed ramp — nothing, not even a finished real load, can skip this.
+        target = fake;
+      } else if (!finishRef.current && realProgressRef.current < 100) {
+        // Ramp finished, but the real load isn't done yet — hold at 90.
+        target = 90;
+      } else {
+        // Ramp finished AND real load is done: start/continue the eased finish.
+        if (!finishRef.current) {
+          finishRef.current = { time: now, from: Math.max(displayRef.current, 90) };
+        }
         const elapsedFinish = now - finishRef.current.time;
         const t = Math.min(1, elapsedFinish / FINISH_DURATION_MS);
-        const eased = easeOutCubic(t);
-        target = finishRef.current.from + (100 - finishRef.current.from) * eased;
+        target = finishRef.current.from + (100 - finishRef.current.from) * easeOutCubic(t);
         isDone = t >= 1;
-      } else {
-        const elapsed = now - (startTimeRef.current ?? now);
-        target = computeFakeProgress(elapsed); // caps at 90 until finish triggers
       }
 
       if (target > displayRef.current) {
