@@ -24,31 +24,38 @@ const EXPAND_DPR_RESTORE_DELAY = 750;
 function shouldPauseScene() {
   if (typeof document === "undefined") return false;
 
-  return document.visibilityState !== "visible";
+  return document.visibilityState !== "visible" || !document.hasFocus();
 }
 
 function useInactiveTabPause() {
   const [paused, setPaused] = useState(false);
 
   useEffect(() => {
-    const updatePaused = () => {
-      const nextPaused = shouldPauseScene();
+    const setPausedState = (nextPaused: boolean) => {
       setPaused((current) => (current === nextPaused ? current : nextPaused));
+    };
+
+    const updatePaused = () => {
+      setPausedState(shouldPauseScene());
+    };
+
+    const pauseImmediately = () => {
+      setPausedState(true);
     };
 
     updatePaused();
 
     window.addEventListener("focus", updatePaused);
-    window.addEventListener("blur", updatePaused);
+    window.addEventListener("blur", pauseImmediately);
     window.addEventListener("pageshow", updatePaused);
-    window.addEventListener("pagehide", updatePaused);
+    window.addEventListener("pagehide", pauseImmediately);
     document.addEventListener("visibilitychange", updatePaused);
 
     return () => {
       window.removeEventListener("focus", updatePaused);
-      window.removeEventListener("blur", updatePaused);
+      window.removeEventListener("blur", pauseImmediately);
       window.removeEventListener("pageshow", updatePaused);
-      window.removeEventListener("pagehide", updatePaused);
+      window.removeEventListener("pagehide", pauseImmediately);
       document.removeEventListener("visibilitychange", updatePaused);
     };
   }, []);
