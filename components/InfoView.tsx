@@ -85,6 +85,32 @@ const INFO_BACKGROUNDS: Record<InfoViewName, string> = {
   contact: "/white.webp",
 };
 
+const INFO_VIEW_IMAGES_TO_PRELOAD = [
+  ...Object.values(INFO_BACKGROUNDS),
+  "/profile.jpg",
+  "/projects/perry.webp",
+  "/meta/lotr-portfolio-card.jpg",
+  "/projects/bubblz.webp",
+  "/projects/nebula-store.webp",
+  "/experience/dardoc-og.png",
+  "/experience/pandabase-icon.png",
+  "/tech/nextjs.svg",
+  "/tech/react.svg",
+  "/tech/typescript.svg",
+  "/tech/tailwindcss.svg",
+  "/tech/threejs.svg",
+  "/tech/react-three-fiber.svg",
+  "/tech/gsap.svg",
+  "/tech/motion.svg",
+  "/tech/mongodb.svg",
+  "/tech/mongoose.svg",
+  "/tech/stripe.svg",
+  "/tech/prisma.svg",
+  "/tech/postgres.svg",
+  "/tech/vercel.svg",
+  "/tech/aws.svg",
+];
+
 const INFO_HEADINGS: Record<
   InfoViewName,
   {
@@ -182,7 +208,7 @@ export default function InfoView({
         style={{ backgroundImage: `url(${backgroundImage})` }}
       />
 
-      {Object.values(INFO_BACKGROUNDS).map((image) => (
+      {INFO_VIEW_IMAGES_TO_PRELOAD.map((image) => (
         <div
           key={image}
           aria-hidden="true"

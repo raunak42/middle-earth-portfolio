@@ -269,6 +269,9 @@ export default function HomePage() {
   const [sceneReady, setSceneReady] = useState(false);
   const [mobileScenePhase, setMobileScenePhase] =
     useState<MobileScenePhase>("scene");
+  const [mobileTransitionReady, setMobileTransitionReady] = useState(false);
+  const [mobileTransitionMinElapsed, setMobileTransitionMinElapsed] =
+    useState(false);
   const sceneMetrics = useScenePanelMetrics();
   const isMobileViewport = useIsMobileViewport();
 
@@ -322,21 +325,44 @@ export default function HomePage() {
   }, [progress, sceneError, sceneRetryKey, webGLChecked]);
 
   useEffect(() => {
-    if (mobileScenePhase !== "opening") return;
-    if (mobileOpeningTimerRef.current) return;
+    if (mobileScenePhase !== "opening" && mobileScenePhase !== "closing") {
+      return;
+    }
 
-    mobileOpeningTimerRef.current = setTimeout(() => {
-      mobileOpeningTimerRef.current = null;
-      setMobileScenePhase("open");
+    const minTimer = setTimeout(() => {
+      setMobileTransitionMinElapsed(true);
     }, MOBILE_TRANSITION_LOADING_MS);
 
+    const fallbackTimer = setTimeout(() => {
+      setMobileTransitionReady(true);
+    }, MOBILE_TRANSITION_LOADING_MS + 900);
+
     return () => {
-      if (mobileOpeningTimerRef.current) {
-        clearTimeout(mobileOpeningTimerRef.current);
-        mobileOpeningTimerRef.current = null;
-      }
+      clearTimeout(minTimer);
+      clearTimeout(fallbackTimer);
     };
   }, [mobileScenePhase]);
+
+  useEffect(() => {
+    if (!mobileTransitionMinElapsed || !mobileTransitionReady) return;
+
+    const finishTimer = setTimeout(() => {
+      if (mobileScenePhase === "opening") {
+        setMobileScenePhase("open");
+        return;
+      }
+
+      if (mobileScenePhase === "closing") {
+        setVisibleInfoView((currentView) =>
+          currentView === null ? currentView : null,
+        );
+        setMobileScenePhase("scene");
+        closeTimerRef.current = null;
+      }
+    }, 0);
+
+    return () => clearTimeout(finishTimer);
+  }, [mobileScenePhase, mobileTransitionMinElapsed, mobileTransitionReady]);
 
   const retryScene = useCallback(() => {
     maxProgressRef.current = 0;
@@ -361,6 +387,8 @@ export default function HomePage() {
       mobileOpeningTimerRef.current = null;
 
       if (isMobileViewport && mobileScenePhase === "scene") {
+        setMobileTransitionReady(false);
+        setMobileTransitionMinElapsed(false);
         setMobileScenePhase("opening");
         setVisibleInfoView(view);
         setInfoView(view);
@@ -384,16 +412,10 @@ export default function HomePage() {
     mobileOpeningTimerRef.current = null;
 
     if (isMobileViewport && visibleInfoView !== null) {
+      setMobileTransitionReady(false);
+      setMobileTransitionMinElapsed(false);
       setMobileScenePhase("closing");
       setInfoView((currentView) => (currentView === null ? currentView : null));
-
-      closeTimerRef.current = setTimeout(() => {
-        setVisibleInfoView((currentView) =>
-          currentView === null ? currentView : null,
-        );
-        setMobileScenePhase("scene");
-        closeTimerRef.current = null;
-      }, MOBILE_TRANSITION_LOADING_MS);
       return;
     }
 
@@ -406,9 +428,14 @@ export default function HomePage() {
     }, SCENE_PANEL_TRANSITION_MS);
   }, [isMobileViewport, visibleInfoView]);
 
+  const markMobileTransitionTargetReady = useCallback(() => {
+    setMobileTransitionReady(true);
+  }, []);
+
   const renderSceneContent = (
     controlsDisabled = infoOpen,
     dprOverride?: number,
+    onReady?: () => void,
   ) => {
     if (sceneError) {
       return <SceneErrorFallback error={sceneError} onRetry={retryScene} />;
@@ -428,6 +455,7 @@ export default function HomePage() {
           key={sceneRetryKey}
           controlsDisabled={controlsDisabled}
           dprOverride={dprOverride}
+          onReady={onReady}
           zoom={zoom}
           onViewClick={openInfoView}
         />
@@ -513,9 +541,12 @@ export default function HomePage() {
   const mobileScenePanelRevealed =
     mobileScenePhase === "open" || mobileScenePhase === "closing";
   const mobileScenePanelShouldRender =
-    mobileScenePanelVisible && mobileScenePanelRevealed;
+    mobileScenePanelVisible &&
+    (mobileScenePhase === "opening" || mobileScenePhase === "open");
   const mainSceneShouldRender =
-    !isMobileViewport || !mobileScenePanelShouldRender;
+    !isMobileViewport ||
+    mobileScenePhase === "scene" ||
+    mobileScenePhase === "closing";
   const mobileScenePanelInteractive =
     infoOpen && mobileScenePanelRevealed && mobileScenePhase === "open";
 
@@ -548,7 +579,13 @@ export default function HomePage() {
             >
               <div className="absolute inset-0 overflow-hidden rounded-[16px] bg-black shadow-[0_12px_32px_rgba(36,33,29,0.18)]">
                 {mobileScenePanelShouldRender
-                  ? renderSceneContent(true, MOBILE_SCENE_PANEL_DPR)
+                  ? renderSceneContent(
+                      true,
+                      MOBILE_SCENE_PANEL_DPR,
+                      mobileScenePhase === "opening"
+                        ? markMobileTransitionTargetReady
+                        : undefined,
+                    )
                   : null}
               </div>
               <div
@@ -602,7 +639,15 @@ export default function HomePage() {
               transformOrigin: "top left",
             }}
           >
-            {mainSceneShouldRender ? renderSceneContent(infoOpen) : null}
+            {mainSceneShouldRender
+              ? renderSceneContent(
+                  infoOpen,
+                  undefined,
+                  mobileScenePhase === "closing"
+                    ? markMobileTransitionTargetReady
+                    : undefined,
+                )
+              : null}
           </div>
         </div>
 

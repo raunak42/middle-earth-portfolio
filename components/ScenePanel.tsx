@@ -3,7 +3,7 @@
 import "@/components/setupCustomToneMapping";
 
 import { useEffect, useRef, useState } from "react";
-import { Canvas } from "@react-three/fiber";
+import { Canvas, useFrame } from "@react-three/fiber";
 import * as THREE from "three";
 import AnimatedPropsSquash from "@/components/AnimatedPropsSquash";
 import CameraRig from "@/components/CameraRig";
@@ -57,6 +57,18 @@ function useInactiveTabPause() {
   }, []);
 
   return paused;
+}
+
+function SceneReadyNotifier({ onReady }: { onReady?: () => void }) {
+  const readyRef = useRef(false);
+
+  useFrame(() => {
+    if (readyRef.current || !onReady) return;
+    readyRef.current = true;
+    requestAnimationFrame(onReady);
+  });
+
+  return null;
 }
 
 function useMotionAwareDpr(
@@ -133,11 +145,13 @@ function useMotionAwareDpr(
 export default function ScenePanel({
   controlsDisabled,
   dprOverride,
+  onReady,
   onViewClick,
   zoom,
 }: {
   controlsDisabled: boolean;
   dprOverride?: number;
+  onReady?: () => void;
   onViewClick: (view: InfoViewName) => void;
   zoom: number;
 }) {
@@ -161,6 +175,7 @@ export default function ScenePanel({
         toneMappingExposure: 1.2,
       }}
     >
+      <SceneReadyNotifier onReady={onReady} />
       <Cave />
       <CameraRig disabled={controlsDisabled} zoom={zoom} />
       <AnimatedPropsSquash />
