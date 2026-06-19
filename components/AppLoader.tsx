@@ -4,97 +4,117 @@ import { useEffect, useRef, useState } from "react";
 import useLoadingProgress from "@/components/useLoadingProgress";
 
 const HIDE_DELAY_MS = 450;
-const FAST_PHASE_DURATION_MS = 350; // 0 -> 50, runs on the compositor, immune to JS jank
-const SLOW_PHASE_DURATION_MS = 1400; // 50 -> 90, same
-const FINISH_DURATION_MS = 300; // 90 -> 100, only once real load is done
-const RAMP_DURATION_MS = FAST_PHASE_DURATION_MS + SLOW_PHASE_DURATION_MS;
-const FAST_OFFSET = FAST_PHASE_DURATION_MS / RAMP_DURATION_MS;
+const FAST_PHASE_DURATION_MS = 350; // 0 -> 50, guaranteed, time-based only
+const SLOW_PHASE_DURATION_MS = 1400; // 50 -> 90, guaranteed, time-based only
+const FINISH_DURATION_MS = 300; // 90 -> 100, only once the real load is done
 
-// Reads the bar's *actual* current rendered scaleX, straight off the DOM.
-// This is how the displayed number stays guaranteed in sync with the bar —
-// it's not tracked separately, it's read from the same thing you're looking at.
-function readScaleX(el: HTMLElement): number {
-  const transform = getComputedStyle(el).transform;
-  if (!transform || transform === "none") return 0;
-  const match = transform.match(/matrix\(([^)]+)\)/);
-  if (!match) return 0;
-  const value = parseFloat(match[1].split(",")[0].trim());
-  return Number.isFinite(value) ? value : 0;
+function computeFakeProgress(elapsedMs: number): number {
+  if (elapsedMs <= 0) return 0;
+
+  if (elapsedMs < FAST_PHASE_DURATION_MS) {
+    return (elapsedMs / FAST_PHASE_DURATION_MS) * 50;
+  }
+
+  const slowElapsed = elapsedMs - FAST_PHASE_DURATION_MS;
+  if (slowElapsed < SLOW_PHASE_DURATION_MS) {
+    return 50 + (slowElapsed / SLOW_PHASE_DURATION_MS) * 40;
+  }
+
+  return 90; // plateau — holds here no matter how fast/slow real loading is
+}
+
+function easeOutCubic(t: number): number {
+  return 1 - Math.pow(1 - t, 3);
 }
 
 export default function AppLoader({ hidden = false }: { hidden?: boolean }) {
   const { progress: realProgress } = useLoadingProgress();
 
-  const [displayProgress, setDisplayProgress] = useState(0);
   const [visible, setVisible] = useState(true);
 
   const barRef = useRef<HTMLDivElement | null>(null);
+  const textRef = useRef<HTMLDivElement | null>(null);
   const realProgressRef = useRef(0);
-  const rampFinishedRef = useRef(false);
-  const finishStartedRef = useRef(false);
+  const displayValueRef = useRef(0);
+  const startTimeRef = useRef<number | null>(null);
+  const finishRef = useRef<{ time: number; from: number } | null>(null);
   const rafRef = useRef<number | null>(null);
   const hideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  function maybeStartFinish() {
-    if (
-      rampFinishedRef.current &&
-      realProgressRef.current >= 100 &&
-      !finishStartedRef.current &&
-      barRef.current
-    ) {
-      finishStartedRef.current = true;
-      const finishAnim = barRef.current.animate(
-        [{ transform: "scaleX(0.9)" }, { transform: "scaleX(1)" }],
-        { duration: FINISH_DURATION_MS, easing: "ease-out", fill: "forwards" },
-      );
-      finishAnim.finished
-        .then(() => {
-          hideTimerRef.current = setTimeout(() => setVisible(false), HIDE_DELAY_MS);
-        })
-        .catch(() => {});
-    }
-  }
 
   useEffect(() => {
     const safeValue = Number.isFinite(realProgress) ? realProgress : 0;
     realProgressRef.current = Math.min(100, Math.max(0, safeValue));
-    maybeStartFinish();
   }, [realProgress]);
 
   useEffect(() => {
-    const bar = barRef.current;
-    if (!bar) return;
+    if (startTimeRef.current === null) {
+      startTimeRef.current = performance.now();
+    }
 
-    // 0 -> 50 -> 90, entirely on the browser's animation engine.
-    // Nothing on the JS main thread — including the real loader's work —
-    // can pause or skip this.
-    const rampAnim = bar.animate(
-      [
-        { transform: "scaleX(0)", offset: 0 },
-        { transform: "scaleX(0.5)", offset: FAST_OFFSET },
-        { transform: "scaleX(0.9)", offset: 1 },
-      ],
-      { duration: RAMP_DURATION_MS, fill: "forwards", easing: "linear" },
-    );
-
-    rampAnim.finished
-      .then(() => {
-        rampFinishedRef.current = true;
-        maybeStartFinish();
-      })
-      .catch(() => {});
-
-    // Lightweight loop purely to drive the displayed number — it reads the
-    // bar's real current value, so it can never disagree with what's on screen.
-    const readLoop = () => {
-      const scaleX = readScaleX(bar);
-      setDisplayProgress((current) => {
-        const next = Math.min(100, Math.max(0, scaleX * 100));
-        return next > current ? next : current;
-      });
-      rafRef.current = requestAnimationFrame(readLoop);
+    // Both the bar and the number are written here, synchronously, via refs.
+    // Neither goes through React state/render — that's deliberate. React's
+    // commit can lag behind real time if it's busy doing anything else on
+    // the page (very likely, with a 3D scene mounting alongside this), and
+    // that's exactly what caused the bar and number to disagree before: the
+    // bar (direct DOM write) kept moving every frame while the number
+    // (React state) waited for a render that hadn't happened yet. Writing
+    // both directly removes that gap entirely.
+    const applyProgress = (value: number) => {
+      displayValueRef.current = value;
+      if (barRef.current) {
+        barRef.current.style.transform = `scaleX(${value / 100})`;
+      }
+      if (textRef.current) {
+        textRef.current.textContent = `${value.toFixed(2)}%`;
+      }
     };
-    rafRef.current = requestAnimationFrame(readLoop);
+
+    const tick = (now: number) => {
+      const elapsed = now - (startTimeRef.current ?? now);
+      const fake = computeFakeProgress(elapsed); // 0..90, deterministic, ignores real entirely
+
+      let target: number;
+      let isDone = false;
+
+      if (fake < 90) {
+        // Guaranteed ramp — nothing can skip or reorder this part.
+        target = fake;
+      } else if (!finishRef.current && realProgressRef.current < 100) {
+        // Ramp finished, real load isn't done yet — hold at 90.
+        target = 90;
+      } else {
+        // Ramp finished AND real load is done: ease 90 -> 100.
+        if (!finishRef.current) {
+          finishRef.current = {
+            time: now,
+            from: Math.max(displayValueRef.current, 90),
+          };
+        }
+        const elapsedFinish = now - finishRef.current.time;
+        const t = Math.min(1, elapsedFinish / FINISH_DURATION_MS);
+        target =
+          finishRef.current.from + (100 - finishRef.current.from) * easeOutCubic(t);
+        isDone = t >= 1;
+      }
+
+      if (target > displayValueRef.current) {
+        applyProgress(Math.min(100, target));
+      }
+
+      if (isDone) {
+        if (!hideTimerRef.current) {
+          hideTimerRef.current = setTimeout(() => {
+            setVisible(false);
+            hideTimerRef.current = null;
+          }, HIDE_DELAY_MS);
+        }
+        return;
+      }
+
+      rafRef.current = requestAnimationFrame(tick);
+    };
+
+    rafRef.current = requestAnimationFrame(tick);
 
     return () => {
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
@@ -122,8 +142,11 @@ export default function AppLoader({ hidden = false }: { hidden?: boolean }) {
               style={{ transform: "scaleX(0)" }}
             />
           </div>
-          <div className="mt-[6px] text-[0.9em] font-black tabular-nums text-[#163522]">
-            {displayProgress.toFixed(2)}%
+          <div
+            ref={textRef}
+            className="mt-[6px] text-[0.9em] font-black tabular-nums text-[#163522]"
+          >
+            0.00%
           </div>
         </div>
       </div>
