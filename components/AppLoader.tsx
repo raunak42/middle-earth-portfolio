@@ -66,31 +66,31 @@ export default function AppLoader({ hidden = false }: { hidden?: boolean }) {
         hideTimerRef.current = null;
       }
       setVisible((current) => (current ? current : true));
-      return;
     }
-
-    if (hideTimerRef.current) return;
-
-    hideTimerRef.current = setTimeout(() => {
-      setVisible(false);
-      hideTimerRef.current = null;
-    }, HIDE_DELAY_MS);
   }, [progress]);
 
   useEffect(() => {
     const actualProgress = maxProgressRef.current;
     const nextDisplayProgress =
-      actualProgress >= 100
-        ? 100
+      fakeProgress < 90
+        ? fakeProgress
         : actualProgress >= 90
           ? actualProgress
-          : Math.max(actualProgress, fakeProgress);
+          : 90;
 
     setDisplayProgress((currentProgress) =>
       nextDisplayProgress > currentProgress
         ? Math.min(100, nextDisplayProgress)
         : currentProgress,
     );
+
+    if (actualProgress < 100 || fakeProgress < 90) return;
+    if (hideTimerRef.current) return;
+
+    hideTimerRef.current = setTimeout(() => {
+      setVisible(false);
+      hideTimerRef.current = null;
+    }, HIDE_DELAY_MS);
   }, [fakeProgress, progress]);
 
   if (hidden || !visible) return null;
