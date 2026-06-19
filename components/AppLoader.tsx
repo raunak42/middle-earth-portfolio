@@ -4,12 +4,13 @@ import { useEffect, useRef, useState } from "react";
 import useLoadingProgress from "@/components/useLoadingProgress";
 
 const HIDE_DELAY_MS = 450;
-const FAKE_FAST_PROGRESS_DELAY_MS = 20;
-const FAKE_SLOW_PROGRESS_DELAY_MS = 70;
+const FAKE_FAST_PROGRESS_DELAY_MS = 2;
+const FAKE_SLOW_PROGRESS_DELAY_MS = 4;
 
 export default function AppLoader({ hidden = false }: { hidden?: boolean }) {
   const { progress } = useLoadingProgress();
   const maxProgressRef = useRef(0);
+  const fakeProgressRef = useRef(0);
   const hideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const fakeProgressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(
     null,
@@ -30,31 +31,26 @@ export default function AppLoader({ hidden = false }: { hidden?: boolean }) {
   useEffect(() => {
     let cancelled = false;
 
-    const tickFakeProgress = () => {
-      setFakeProgress((currentProgress) => {
-        if (currentProgress >= 90) return currentProgress;
+    const scheduleNextTick = () => {
+      const nextDelay =
+        fakeProgressRef.current < 50
+          ? FAKE_FAST_PROGRESS_DELAY_MS
+          : FAKE_SLOW_PROGRESS_DELAY_MS;
 
-        const nextProgress = Math.min(90, currentProgress + 1);
-        const nextDelay =
-          nextProgress < 50
-            ? FAKE_FAST_PROGRESS_DELAY_MS
-            : FAKE_SLOW_PROGRESS_DELAY_MS;
-
-        if (!cancelled && nextProgress < 90) {
-          fakeProgressTimerRef.current = setTimeout(
-            tickFakeProgress,
-            nextDelay,
-          );
-        }
-
-        return nextProgress;
-      });
+      fakeProgressTimerRef.current = setTimeout(tickFakeProgress, nextDelay);
     };
 
-    fakeProgressTimerRef.current = setTimeout(
-      tickFakeProgress,
-      FAKE_FAST_PROGRESS_DELAY_MS,
-    );
+    const tickFakeProgress = () => {
+      if (cancelled) return;
+
+      const nextProgress = Math.min(90, fakeProgressRef.current + 1);
+      fakeProgressRef.current = nextProgress;
+      setFakeProgress(nextProgress);
+
+      if (nextProgress < 90) scheduleNextTick();
+    };
+
+    scheduleNextTick();
 
     return () => {
       cancelled = true;
@@ -118,7 +114,7 @@ export default function AppLoader({ hidden = false }: { hidden?: boolean }) {
         <div className="relative px-14 py-8 text-center before:absolute before:inset-[-64px] before:-z-10 before:rounded-full before:bg-[radial-gradient(ellipse_at_center,rgba(248,223,180,0.82)_0%,rgba(248,223,180,0.56)_32%,rgba(248,223,180,0.26)_62%,transparent_100%)] before:blur-[30px] before:content-[''] after:absolute after:inset-[-36px] after:-z-10 after:rounded-full after:bg-[radial-gradient(ellipse_at_center,rgba(255,241,210,0.38)_0%,rgba(255,241,210,0.14)_55%,transparent_100%)] after:blur-[14px] after:content-['']">
           <div className="h-[6px] w-[180px] overflow-hidden rounded-full bg-white/40">
             <div
-              className="h-full rounded-full bg-[#163522] transition-[width] duration-200 ease-out"
+              className="h-full rounded-full bg-[#163522] transition-none"
               style={{ width: `${displayProgress}%` }}
             />
           </div>
