@@ -8,7 +8,7 @@ import {
   useState,
   useSyncExternalStore,
 } from "react";
-import { Loader } from "lucide-react";
+import { Info, Loader } from "lucide-react";
 import AppLoader from "@/components/AppLoader";
 import InfoView, { type InfoViewName } from "@/components/InfoView";
 import SceneErrorBoundary from "@/components/SceneErrorBoundary";
@@ -656,6 +656,15 @@ export default function HomePage() {
           className="pointer-events-none absolute z-[2] border-dashed transition-[top,right,bottom,left,border-width,border-radius,border-color] duration-[700ms] ease-[cubic-bezier(0.76,0,0.24,1)]"
           style={frameStyle}
         />
+      </div>
+
+      <div
+        className={`pointer-events-none fixed right-3 top-3 z-20 flex items-center gap-1.5 bg-transparent px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.1em] text-white transition-opacity duration-300 md:right-4 md:top-4 md:text-[11px] ${
+          infoOpen || loading || Boolean(sceneError) ? "opacity-0" : "opacity-100"
+        }`}
+      >
+        <Info className="h-[1.15em] w-[1.15em]" strokeWidth={3} />
+        <span>Scroll / swipe to explore</span>
       </div>
 
       <ZoomControl
