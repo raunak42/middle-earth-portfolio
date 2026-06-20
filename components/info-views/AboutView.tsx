@@ -68,6 +68,9 @@ export default function AboutView() {
       <h1 className="m-0 text-[clamp(32px,8vw,46px)] font-black leading-[0.95] text-[#24211d] md:text-[clamp(38px,3.4vw,62px)]">
         Creative Engineer
       </h1>
+      <p className="m-0 mt-2 text-[clamp(13px,3.4vw,16px)] font-black leading-none text-[#24211d]/70 md:mt-3 md:text-[clamp(14px,1vw,18px)]">
+        (full stack + AI)
+      </p>
 
       <div className="clear-left mt-5 text-[clamp(13px,3.7vw,16px)] font-semibold leading-[1.68] text-[#3d3830] md:hidden [&>p+p]:mt-3">
         <p className="m-0">
