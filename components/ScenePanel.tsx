@@ -21,6 +21,16 @@ const PAUSED_DPR = 1;
 const DPR_RESTORE_DELAY = 1200;
 const EXPAND_DPR_RESTORE_DELAY = 750;
 
+// The desktop info-card effect scales the DOM around the scene with CSS
+// transforms while clipping it into the notebook cutout. react-use-measure
+// (used by R3F's <Canvas>) reads getBoundingClientRect() by default, which
+// includes that transform. On some screens the renderer would then lock its
+// WebGL viewport to the small notebook size and never grow it back when the
+// scene expanded, leaving the scene rendered only in the top-left corner with
+// black everywhere else. offsetSize measures the element's layout box instead
+// of the transformed visual box, so the renderer stays correctly sized.
+const CANVAS_RESIZE_OPTIONS = { offsetSize: true };
+
 function shouldPauseScene() {
   if (typeof document === "undefined") return false;
 
@@ -165,6 +175,7 @@ export default function ScenePanel({
       className={`!h-full !w-full !block ${controlsDisabled ? "touch-pan-y" : "touch-none"}` }
       shadows
       dpr={dpr}
+      resize={CANVAS_RESIZE_OPTIONS}
       frameloop={frameloop}
       camera={{ position: [0, 0.15, 0.5], fov: 60, near: 0.001, far: 100 }}
       gl={{
