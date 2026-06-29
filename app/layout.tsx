@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
 
 const siteUrl =
@@ -65,7 +66,10 @@ export default function RootLayout({
           crossOrigin="anonymous"
         />
       </head>
-      <body style={{ backgroundColor: "#000000" }}>{children}</body>
+      <body style={{ backgroundColor: "#000000" }}>
+        {children}
+        <Analytics />
+      </body>
     </html>
   );
 }
