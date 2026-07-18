@@ -91,7 +91,7 @@ const INFO_VIEW_IMAGES_TO_PRELOAD = [
   "/projects/perry.webp",
   "/meta/lotr-portfolio-card.jpg",
   "/projects/bubblz.webp",
-  "/projects/nebula-store.webp",
+  // "/projects/nebula-store.webp",
   "/experience/dardoc-og.png",
   "/experience/pandabase-icon.png",
   "/tech/nextjs.svg",

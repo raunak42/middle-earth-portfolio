@@ -38,6 +38,7 @@ const PROJECTS: Project[] = [
     githubUrl: "https://github.com/raunak42/bubblz",
     liveUrl: "https://bubblz.vercel.app",
   },
+  /*
   {
     id: "nebula-store",
     title: "Nebula Store",
@@ -46,6 +47,7 @@ const PROJECTS: Project[] = [
     githubUrl: "https://github.com/raunak42/nebula-store",
     liveUrl: "https://nebula-store.vercel.app/",
   },
+  */
 ];
 
 function GitHubIcon() {
@@ -103,9 +105,50 @@ const PROJECT_PAGES = Array.from(
   { length: Math.ceil(PROJECTS.length / 2) },
   (_, index) => PROJECTS.slice(index * 2, index * 2 + 2),
 );
-const CAROUSEL_PAGES = [...PROJECT_PAGES, "archive" as const];
+const CAROUSEL_PAGES = PROJECT_PAGES;
 
 const ARCHIVE_URL = "https://github.com/raunak42";
+
+function ArchiveCard() {
+  return (
+    <article className="grid h-full min-h-0 rotate-[0.12deg] grid-cols-[42.5vw_minmax(0,1fr)] grid-rows-[auto_1fr] gap-x-3 gap-y-2 rounded-[16px] border-0 border-[#2f2a23]/70 bg-transparent p-0 shadow-none backdrop-blur-none md:flex md:items-center md:gap-5 md:rounded-[18px] md:border-[3px] md:border-dashed md:bg-[#fff8e8]/42 md:p-4 md:shadow-[3px_4px_0_rgba(39,32,24,0.08)] md:backdrop-blur-[1px]">
+      <a
+        className="group relative grid aspect-[16/9] w-[42.5vw] shrink-0 place-items-center overflow-hidden rounded-[12px] border-[3px] border-dashed border-[#24211d] bg-[#fff8e8]/45 bg-clip-padding text-[#221f1a] transition-[border-color,box-shadow,filter] duration-200 ease-out hover:brightness-[1.04] hover:shadow-[3px_4px_0_rgba(34,31,26,0.14)] md:w-[42%] md:border-2 md:border-[#221f1a]/85"
+        href={ARCHIVE_URL}
+        target="_blank"
+        rel="noreferrer"
+        aria-label="View archived projects"
+      >
+        <div className="flex h-12 w-12 items-center justify-center rounded-[14px] border-2 border-dashed border-[#4c9a47]/70 bg-[#4c9a47]/10 text-[27px] transition-transform group-hover:rotate-[-3deg] group-hover:scale-105 md:h-14 md:w-14 md:text-[30px]">
+          <ArchiveBoxIcon />
+        </div>
+      </a>
+
+      <div className="contents md:flex md:min-w-0 md:flex-1 md:flex-col md:self-stretch md:py-1">
+        <div className="flex flex-col items-start gap-1 md:flex-row md:justify-between md:gap-4">
+          <h3 className="m-0 text-[clamp(15px,4.2vw,20px)] font-black leading-[1.08] text-[#221f1a] md:text-[clamp(17px,1.1vw,22px)]">
+            Archived Projects
+          </h3>
+
+          <a
+            className="shrink-0 cursor-pointer text-[clamp(18px,5vw,23px)] text-[#221f1a] transition-transform hover:scale-110 md:text-[clamp(18px,1.25vw,25px)]"
+            href={ARCHIVE_URL}
+            target="_blank"
+            rel="noreferrer"
+            aria-label="View archived projects"
+          >
+            <GoToIcon />
+          </a>
+        </div>
+
+        <p className="col-span-2 mb-0 mt-0 text-[clamp(12px,3.35vw,14px)] font-bold leading-[1.24] text-[#3b362e] md:mt-3 md:text-[clamp(13px,0.9vw,16px)] md:leading-[1.35]">
+          Older experiments, prototypes, and extra builds live in one tidy
+          archive.
+        </p>
+      </div>
+    </article>
+  );
+}
 
 const PREVIEW_CLASS =
   "relative block aspect-[16/9] w-[42.5vw] shrink-0 overflow-hidden rounded-[12px] border-[3px] border-dashed border-[#24211d] bg-cover bg-center bg-clip-padding transition-[border-color,box-shadow,filter] duration-200 ease-out md:w-[42%] md:border-2 md:border-[#221f1a]/85";
@@ -155,17 +198,13 @@ export default function ProjectsView() {
     <div className="flex h-[430px] min-h-[430px] flex-col overflow-hidden pr-1 md:h-full md:min-h-0">
       <div className="min-h-0 flex-1 overflow-hidden rounded-none">
         <div className="relative h-full">
-          {CAROUSEL_PAGES.map((page, pageIndex) => {
+          {CAROUSEL_PAGES.map((pageProjects, pageIndex) => {
             const pageOffset = pageIndex - activePage;
-            const isArchivePage = page === "archive";
-            const pageProjects = isArchivePage ? [] : page;
 
             return (
             <div
               key={pageIndex}
-              className={`absolute inset-0 transition-transform duration-500 ease-[cubic-bezier(0.76,0,0.24,1)] ${
-                isArchivePage ? "grid place-items-center" : "grid grid-rows-2 gap-4 md:gap-4"
-              } ${
+              className={`absolute inset-0 grid grid-rows-2 gap-4 transition-transform duration-500 ease-[cubic-bezier(0.76,0,0.24,1)] md:gap-4 ${
                 pageOffset === 0 ? "pointer-events-auto" : "pointer-events-none"
               }`}
               style={{
@@ -173,30 +212,6 @@ export default function ProjectsView() {
               }}
               aria-hidden={pageOffset !== 0}
             >
-              {isArchivePage ? (
-                <a
-                  className="group flex w-[min(92%,420px)] flex-col items-center justify-center rounded-[18px] border-[3px] border-dashed border-[#24211d] bg-transparent px-5 py-6 text-center text-[#221f1a] transition-[transform,background-color,box-shadow] hover:-translate-y-1 hover:bg-[#fff8e8]/24 hover:shadow-[4px_5px_0_rgba(39,32,24,0.08)] md:w-[min(72%,500px)] md:border-[#2f2a23]/70 md:bg-[#fff8e8]/30 md:px-7 md:py-7"
-                  href={ARCHIVE_URL}
-                  target="_blank"
-                  rel="noreferrer"
-                  aria-label="View archived projects"
-                >
-                  <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-[14px] border-2 border-dashed border-[#4c9a47]/70 bg-[#4c9a47]/10 text-[27px] text-[#221f1a] transition-transform group-hover:rotate-[-3deg] group-hover:scale-105 md:h-14 md:w-14 md:text-[30px]">
-                    <ArchiveBoxIcon />
-                  </div>
-                  <h3 className="m-0 text-[clamp(22px,5.4vw,30px)] font-black leading-none text-[#221f1a] md:text-[clamp(25px,1.7vw,34px)]">
-                    Archived Projects
-                  </h3>
-                  <p className="mb-0 mt-3 max-w-[360px] text-[clamp(12px,3.35vw,15px)] font-bold leading-[1.35] text-[#3b362e] md:text-[clamp(13px,0.9vw,16px)]">
-                    Older experiments, prototypes, and extra builds live in one tidy archive.
-                  </p>
-                  <span className="mt-4 inline-flex items-center gap-2 rounded-full border-2 border-dashed border-[#4c9a47]/65 px-3.5 py-1.5 text-[13px] font-black text-[#221f1a] group-hover:bg-[#4c9a47]/12 md:text-[14px]">
-                    Open Archive
-                    <GoToIcon />
-                  </span>
-                </a>
-              ) : null}
-
               {pageProjects.map((project, projectIndex) => (
                 <article
                   key={project.id}
@@ -246,6 +261,8 @@ export default function ProjectsView() {
                   </div>
                 </article>
               ))}
+
+              {pageProjects.length < 2 ? <ArchiveCard /> : null}
             </div>
             );
           })}
