@@ -19,6 +19,7 @@ const CAMERA_MOTION_DPR = 1.6;
 const PANEL_DPR = 1.1;
 const PAUSED_DPR = 1;
 const DPR_RESTORE_DELAY = 1200;
+const SCENE_PANEL_TRANSITION_MS = 700;
 const EXPAND_DPR_RESTORE_DELAY = 750;
 
 // The desktop info-card effect scales the DOM around the scene with CSS
@@ -114,7 +115,10 @@ function useMotionAwareDpr(
 
     if (controlsDisabled) {
       clearRestoreTimer();
-      const panelTimer = setTimeout(() => setDpr(PANEL_DPR), 0);
+      const panelTimer = setTimeout(
+        () => setDpr(PANEL_DPR),
+        SCENE_PANEL_TRANSITION_MS,
+      );
 
       return () => {
         clearTimeout(panelTimer);
