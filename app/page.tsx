@@ -463,25 +463,30 @@ export default function HomePage() {
     );
   };
 
+  // Keep the scene and dashed frame at a stable viewport-sized layout box.
+  // A compositor transform avoids per-frame canvas resizes and border reflow.
   const sceneTransformStyle = useMemo(() => {
+    const fullViewportStyle = {
+      height: "100vh",
+      left: "0px",
+      top: "0px",
+      width: "100vw",
+    };
+
     if (isMobileViewport || !infoOpen || !sceneMetrics) {
       return {
+        ...fullViewportStyle,
         borderRadius: "0px",
-        height: "100vh",
-        left: "0px",
-        top: "0px",
-        transform: "translate3d(0, 0, 0)",
-        width: "100vw",
+        transform: "translate3d(0, 0, 0) scale(1)",
       };
     }
 
+    const scale = sceneMetrics.width / sceneMetrics.viewportWidth;
+
     return {
-      borderRadius: `${sceneMetrics.radius}px`,
-      height: `${sceneMetrics.height}px`,
-      left: `${sceneMetrics.x}px`,
-      top: `${sceneMetrics.y}px`,
-      transform: "translate3d(0, 0, 0)",
-      width: `${sceneMetrics.width}px`,
+      ...fullViewportStyle,
+      borderRadius: `${sceneMetrics.radius / scale}px`,
+      transform: `translate3d(${sceneMetrics.x}px, ${sceneMetrics.y}px, 0) scale(${scale})`,
     };
   }, [infoOpen, isMobileViewport, sceneMetrics]);
 
@@ -495,13 +500,14 @@ export default function HomePage() {
       };
     }
 
-    const frameWidth = sceneMetrics.frameWidth;
+    const scale = sceneMetrics.width / sceneMetrics.viewportWidth;
+    const frameWidth = sceneMetrics.frameWidth / scale;
 
     return {
       borderBottomWidth: frameWidth,
       borderColor: "#24211d",
       borderLeftWidth: frameWidth,
-      borderRadius: `${sceneMetrics.radius + frameWidth}px`,
+      borderRadius: `${(sceneMetrics.radius + sceneMetrics.frameWidth) / scale}px`,
       borderRightWidth: frameWidth,
       borderTopWidth: frameWidth,
       bottom: -frameWidth,
@@ -511,28 +517,16 @@ export default function HomePage() {
     };
   }, [infoOpen, isMobileViewport, sceneMetrics]);
 
-  const sceneContentStyle = useMemo(() => {
-    if (isMobileViewport || !infoOpen || !sceneMetrics) {
-      return {
-        height: "100vh",
-        transform: "translate3d(0, 0, 0) scale(1)",
-        width: "100vw",
-      };
-    }
+  const sceneShadowStyle = useMemo(() => {
+    if (isMobileViewport || !sceneMetrics) return undefined;
 
-    const scale = Math.max(
-      sceneMetrics.width / sceneMetrics.viewportWidth,
-      sceneMetrics.height / sceneMetrics.viewportHeight,
-    );
-    const x = (sceneMetrics.width - sceneMetrics.viewportWidth * scale) / 2;
-    const y = (sceneMetrics.height - sceneMetrics.viewportHeight * scale) / 2;
+    const scale = sceneMetrics.width / sceneMetrics.viewportWidth;
 
     return {
-      height: `${sceneMetrics.viewportHeight}px`,
-      transform: `translate3d(${x}px, ${y}px, 0) scale(${scale})`,
-      width: `${sceneMetrics.viewportWidth}px`,
+      borderRadius: `${sceneMetrics.radius / scale}px`,
+      boxShadow: `0 ${24 / scale}px ${80 / scale}px rgba(55,23,17,0.22)`,
     };
-  }, [infoOpen, isMobileViewport, sceneMetrics]);
+  }, [isMobileViewport, sceneMetrics]);
 
   const mobileScenePanelStyle = {
     aspectRatio: MOBILE_SCENE_PANEL_ASPECT,
@@ -603,11 +597,11 @@ export default function HomePage() {
         aria-label={infoOpen ? "Expand scene" : undefined}
         className={`absolute left-0 top-0 ${
           sceneInMobileNotebook ? "z-[1]" : "z-[3]"
-        } transform-gpu overflow-visible shadow-none transition-[left,top,width,height,border-radius,box-shadow,opacity] duration-[700ms] ease-[cubic-bezier(0.76,0,0.24,1)] ${
+        } transform-gpu overflow-visible transition-[transform,border-radius,opacity] duration-[700ms] ease-[cubic-bezier(0.76,0,0.24,1)] will-change-transform ${
           loading || sceneInMobileNotebook
             ? "pointer-events-none opacity-0"
             : "pointer-events-auto opacity-100"
-        } ${infoOpen ? "cursor-pointer shadow-[0_24px_80px_rgba(55,23,17,0.22)]" : ""}`}
+        } ${infoOpen ? "cursor-pointer" : ""}`}
         role={infoOpen && !sceneInMobileNotebook ? "button" : undefined}
         tabIndex={infoOpen && !sceneInMobileNotebook ? 0 : undefined}
         style={{
@@ -631,24 +625,24 @@ export default function HomePage() {
           }
         }}
       >
+        <div
+          aria-hidden="true"
+          className={`pointer-events-none absolute inset-0 -z-[1] transition-opacity duration-[700ms] ease-[cubic-bezier(0.76,0,0.24,1)] ${
+            infoOpen && !isMobileViewport ? "opacity-100" : "opacity-0"
+          }`}
+          style={sceneShadowStyle}
+        />
+
         <div className="absolute inset-0 overflow-hidden rounded-[inherit]">
-          <div
-            className="absolute left-0 top-0 transform-gpu transition-transform duration-[700ms] ease-[cubic-bezier(0.76,0,0.24,1)] will-change-transform"
-            style={{
-              ...sceneContentStyle,
-              transformOrigin: "top left",
-            }}
-          >
-            {mainSceneShouldRender
-              ? renderSceneContent(
-                  infoOpen,
-                  undefined,
-                  mobileScenePhase === "closing"
-                    ? markMobileTransitionTargetReady
-                    : undefined,
-                )
-              : null}
-          </div>
+          {mainSceneShouldRender
+            ? renderSceneContent(
+                infoOpen,
+                undefined,
+                mobileScenePhase === "closing"
+                  ? markMobileTransitionTargetReady
+                  : undefined,
+              )
+            : null}
         </div>
 
         <div
