@@ -11,6 +11,7 @@ import {
 import { Info, Loader } from "lucide-react";
 import AppLoader from "@/components/AppLoader";
 import InfoView, { type InfoViewName } from "@/components/InfoView";
+import MusicControl from "@/components/MusicControl";
 import SceneErrorBoundary from "@/components/SceneErrorBoundary";
 import ScenePanel from "@/components/ScenePanel";
 import ZoomControl from "@/components/ZoomControl";
@@ -660,6 +661,8 @@ export default function HomePage() {
         <Info className="h-[1.15em] w-[1.15em]" strokeWidth={3} />
         <span>Scroll / swipe to explore</span>
       </div>
+
+      <MusicControl hidden={infoOpen || loading || Boolean(sceneError)} />
 
       <ZoomControl
         hidden={infoOpen || loading || Boolean(sceneError)}
